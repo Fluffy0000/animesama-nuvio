@@ -9,33 +9,7 @@ function slugify(t) {
 }
 
 function isAllowedHost(url) {
-  var h = getHostname(url);
-  return h.indexOf("sibnet") !== -1;
-}
-
-function getHostname(url) {
-  var m = url.match(/https?:\/\/([^\/:?#]+)/);
-  return m ? m[1].toLowerCase() : "";
-}
-
-function normalizeUrl(raw) {
-  if (!raw) return "";
-  var u = String(raw).trim();
-  if (u.indexOf("http://")!==0 && u.indexOf("https://")!==0) return "";
-  var h = u.indexOf("#"); if (h!==-1) u = u.substring(0,h);
-  u = u.replace(/\/\/vidmoly\.to\//,"//vidmoly.biz/").replace(/\/\/vidmoly\.net\//,"//vidmoly.biz/");
-  return u;
-}
-
-function getPlayerName(url) {
-  if (!url) return "Unknown";
-  var l = url.toLowerCase();
-  if (l.indexOf("sibnet")!==-1) return "Sibnet";
-  if (l.indexOf("vidmoly")!==-1) return "Vidmoly";
-  if (l.indexOf("sendvid")!==-1) return "Sendvid";
-  if (l.indexOf("smoothpre")!==-1) return "Smoothpre";
-  if (l.indexOf("oneupload")!==-1||l.indexOf("uqload")!==-1) return "Uqload";
-  return "Player";
+  return url.indexOf("sibnet") !== -1;
 }
 
 function parseEpisodesJs(c) {
@@ -44,8 +18,7 @@ function parseEpisodesJs(c) {
   while ((m = re.exec(c)) !== null) {
     var uu = [], ure = /['"](https?:\/\/[^'"]+)['"]/g, um;
     while ((um = ure.exec(m[2])) !== null) {
-      var n = normalizeUrl(um[1]);
-      if (n && isAllowedHost(n) && uu.indexOf(n)===-1) uu.push(n);
+      if (isAllowedHost(um[1]) && uu.indexOf(um[1])===-1) uu.push(um[1]);
     }
     if (uu.length > 0) r.push({ n: m[1], u: uu });
   }
@@ -59,17 +32,6 @@ function fetchJs(slug, sp, lang) {
   return fetch(url, { headers: { "User-Agent": UA, "Referer": BASE_URL+"/" } })
     .then(function(r) { return r.ok ? r.text() : null; })
     .catch(function() { return null; });
-}
-
-function resolveSibnet(embedUrl) {
-  return fetch(embedUrl, { headers: { "User-Agent": UA, "Referer": BASE_URL+"/" } })
-    .then(function(r) { return r.text(); })
-    .then(function(html) {
-      var m = html.match(/src:\s*"(\/v\/[^"]+\.mp4)"/);
-      if (m) return "https://video.sibnet.ru" + m[1];
-      return embedUrl;
-    })
-    .catch(function() { return embedUrl; });
 }
 
 function tryOne(slug, season, episode, isMovie) {
@@ -90,15 +52,13 @@ function tryOne(slug, season, episode, isMovie) {
             if (best.u.length < episode) return [];
             var embedUrl = best.u[episode-1];
             if (!embedUrl) return [];
-            return resolveSibnet(embedUrl).then(function(directUrl) {
-              return [{
-                name: "Anime-Sama",
-                title: "Sibnet - Ep "+episode+" - "+lg.toUpperCase(),
-                url: directUrl,
-                quality: "HD",
-                headers: { "Referer": BASE_URL+"/", "User-Agent": UA }
-              }];
-            });
+            return [{
+              name: "Anime-Sama",
+              title: "Sibnet - Ep "+episode+" - "+lg.toUpperCase(),
+              url: embedUrl,
+              quality: "HD",
+              headers: { "Referer": BASE_URL+"/", "User-Agent": UA }
+            }];
           })
         );
       })(paths[p], langs[l]);
