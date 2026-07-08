@@ -9,7 +9,7 @@
       "version": "1.0.0",
       "author": "",
       "supportedTypes": ["movie", "tv", "anime"],
-      "filename": "providers/animesama-simple.js",
+      "filename": "animesama-simple.js"
       "enabled": true,
       "formats": ["mp4", "mkv"],
       "contentLanguage": ["fr"]
