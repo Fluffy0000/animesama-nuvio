@@ -12,7 +12,7 @@
       "filename": "providers/animesama.js",
       "enabled": true,
       "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "contentLanguage": ["fr", "en"]
     }
   ]
 }
