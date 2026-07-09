@@ -1,15 +1,29 @@
 {
-  "name": "French-Manga",
+  "name": "Nuvio Repo — Gabriel",
   "version": "1.0.0",
+  "description": "Collection de providers Nuvio (animes & films VF/VOSTFR).",
+  "author": "Gabriel",
   "scrapers": [
     {
       "id": "french-manga",
       "name": "🍥 French-Manga",
       "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo)",
       "version": "1.0.0",
-      "author": "",
+      "author": "Gabriel",
       "supportedTypes": ["movie", "tv", "anime"],
       "filename": "providers/french-manga.js",
+      "enabled": true,
+      "formats": ["mp4", "mkv"],
+      "contentLanguage": ["fr", "en"]
+    },
+    {
+      "id": "anime-sama",
+      "name": "🐍 Anime-Sama",
+      "description": "Anime-Sama VOSTFR/VF",
+      "version": "2.0.1",
+      "author": "Gabriel",
+      "supportedTypes": ["movie", "tv", "anime"],
+      "filename": "providers/animesama.js",
       "enabled": true,
       "formats": ["mp4", "mkv"],
       "contentLanguage": ["fr", "en"]
