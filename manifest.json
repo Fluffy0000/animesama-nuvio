@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -80,6 +80,25 @@
       "formats": [
         "mp4",
         "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "diag",
+      "name": "🔧 DIAG (test réseau)",
+      "description": "Diagnostic: affiche quelles requêtes passent depuis Nuvio. Ouvre un film et lis les lignes.",
+      "version": "1.0.0",
+      "author": "",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/diag.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
       ],
       "contentLanguage": [
         "fr"
