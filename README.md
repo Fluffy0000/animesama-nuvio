@@ -2,11 +2,11 @@
 
 # 🎬 Nuvio Repo — Animes & Films
 
-### Deux providers, un seul dépôt, tout ton streaming d'anime dans Nuvio 🍿
+### Trois providers, un seul dépôt : animes **et** films tout public dans Nuvio 🍿
 
 **VOSTFR + VF · Multi-qualité · Séries & Films · Sans lien mort**
 
-![Providers](https://img.shields.io/badge/providers-2-8A2BE2?style=for-the-badge)
+![Providers](https://img.shields.io/badge/providers-4-8A2BE2?style=for-the-badge)
 ![Langue](https://img.shields.io/badge/🇫🇷_VOSTFR_+_VF-1E90FF?style=for-the-badge)
 ![Nuvio](https://img.shields.io/badge/Nuvio-Compatible-00C853?style=for-the-badge)
 
@@ -20,8 +20,10 @@
 |---|---|---|
 | 🐍 **Anime-Sama** | anime-sama.fr | Le catalogue Anime-Sama : séries & films, VOSTFR + VF, multi-hébergeurs (Vidmoly, Sibnet, Smoothpre…), domaine qui se met à jour tout seul |
 | 🍥 **French-Manga** | french-manga.net | Animes & films d'animation en VOSTFR + VF via Vidzy & Luluvdo, avec sous-titres et gestion des saisons/films |
+| 🎬 **Yablom** | yablom.com | Films tout public (pas que de l'anime) en VF + VOSTFR via Sharecloudy, flux HLS direct, dossier auto-réparé si le site change |
+| 🎥 **French Stream** | fs20.lol | **Films ET séries live-action** VF/TRUEFRENCH/VOSTFR via Vidzy & Uqload, épisodes par saison, flux HLS multi-qualité |
 
-> Les deux s'installent **d'un coup** avec un seul lien. Tu choisis la source qui répond le mieux selon l'anime.
+> Les quatre s'installent **d'un coup** avec un seul lien. Tu choisis la source qui répond le mieux selon le titre.
 
 ---
 
@@ -38,7 +40,7 @@ C'est **hyper simple**, 30 secondes ⏱️
 https://raw.githubusercontent.com/Fluffy0000/animesama-nuvio/refs/heads/main/manifest.json
 ```
 
-5. Valide ✅ → **🐍 Anime-Sama** et **🍥 French-Manga** apparaissent dans ta liste
+5. Valide ✅ → **🐍 Anime-Sama**, **🍥 French-Manga**, **🎬 Yablom** et **🎥 French Stream** apparaissent dans ta liste
 6. Ouvre un anime, un film… et régale-toi 🍿
 
 > 💡 **Astuce** : après une mise à jour, **supprime puis re-ajoute** le dépôt pour forcer Nuvio à recharger la dernière version (sinon il garde l'ancienne en cache).
@@ -62,17 +64,19 @@ https://raw.githubusercontent.com/Fluffy0000/animesama-nuvio/refs/heads/main/man
 ## 🎯 Ce que tu peux regarder
 
 - 📺 **Séries animées** — One Piece, Naruto, Demon Slayer, Jujutsu Kaisen, Attack on Titan, Solo Leveling, Dandadan, Chainsaw Man… et des centaines d'autres
-- 🎬 **Films** — Studio Ghibli, Your Name, Suzume, les films Demon Slayer / Dragon Ball / One Piece…
+- 🎞️ **Films d'animation** — Studio Ghibli, Your Name, Suzume, les films Demon Slayer / Dragon Ball / One Piece…
+- 🎬 **Films tout public** — via **Yablom** : blockbusters, drames, comédies… en VF (et VOSTFR quand dispo)
+- 🎥 **Films & séries live-action** — via **French Stream** (fs20.lol) : films récents et séries complètes (par saison/épisode), VF/TRUEFRENCH/VOSTFR
 - 🌸 En **VOSTFR** et **VF** selon les disponibilités
 
-> Un anime ne remonte rien sur un provider ? Essaie l'autre : Anime-Sama et French-Manga n'ont pas exactement le même catalogue, ils se complètent.
+> Un titre ne remonte rien sur un provider ? Essaie les autres : Anime-Sama, French-Manga et Yablom n'ont pas le même catalogue, ils se complètent. Pour les **films non-anime**, c'est **Yablom** qui répond.
 
 ---
 
 ## 🛠️ Structure du dépôt (pour bidouiller)
 
 ```
-manifest.json          ← liste les 2 providers (ce que Nuvio lit)
+manifest.json          ← liste les 4 providers (ce que Nuvio lit)
 providers/*.js         ← les scrapers chargés par Nuvio
 src/<nom>/             ← sources (si tu veux modifier puis rebuilder)
 ```

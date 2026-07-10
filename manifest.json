@@ -1,6 +1,6 @@
 {
-  "name": "Anime-Sama Test",
-  "version": "1.0.0",
+  "name": "Nuvio Repo — Gabriel",
+  "version": "1.2.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -18,13 +18,37 @@
       "id": "french-manga",
       "name": "🍥 French-Manga",
       "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo)",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "",
       "supportedTypes": ["movie", "tv", "anime"],
       "filename": "providers/french-manga.js",
       "enabled": true,
       "formats": ["mp4", "mkv"],
       "contentLanguage": ["fr", "en"]
+    },
+    {
+      "id": "yablom",
+      "name": "🎬 Yablom",
+      "description": "Films VF/VOSTFR depuis yablom.com (Sharecloudy HLS)",
+      "version": "1.0.0",
+      "author": "",
+      "supportedTypes": ["movie"],
+      "filename": "providers/yablom.js",
+      "enabled": true,
+      "formats": ["mp4", "mkv"],
+      "contentLanguage": ["fr"]
+    },
+    {
+      "id": "fs20",
+      "name": "🎥 French Stream",
+      "description": "Films & séries live-action VF/VOSTFR depuis fs20.lol (Vidzy, Uqload)",
+      "version": "1.0.0",
+      "author": "",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/fs20.js",
+      "enabled": true,
+      "formats": ["mp4", "mkv"],
+      "contentLanguage": ["fr"]
     }
   ]
 }
