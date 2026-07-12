@@ -82,7 +82,11 @@ function withDefaultHeaders(h) {
   if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = USER_AGENT;
   if (!h["Accept"] && !h["accept"]) h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
   if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7";
-  if (!h["Accept-Encoding"] && !h["accept-encoding"]) h["Accept-Encoding"] = "identity";
+  // NOTE: do NOT set Accept-Encoding (OkHttp decodes gzip only when absent). Match Anime-Sama.
+  // fs20 anti-bot: the "Verification..." interstitial sets cookie `fsschal=1` via JS then reloads.
+  // Nuvio's raw fetch never runs that JS, so without this cookie every request returns the
+  // challenge page (0 results). Sending it directly passes the check.
+  if (!h["Cookie"] && !h["cookie"]) h["Cookie"] = "fsschal=1";
   return h;
 }
 function fetchOnce(url, opts, timeoutMs) {

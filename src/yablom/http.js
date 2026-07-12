@@ -35,7 +35,7 @@ function withDefaultHeaders(h) {
   if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = USER_AGENT;
   if (!h["Accept"] && !h["accept"]) h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
   if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7";
-  if (!h["Accept-Encoding"] && !h["accept-encoding"]) h["Accept-Encoding"] = "identity";
+  // Do NOT set Accept-Encoding (OkHttp decodes gzip only when absent). Anime-Sama omits it.
   // site is age-gated by a "g=true" cookie; sending it avoids the redirect bounce on detail pages
   if (!h["Cookie"] && !h["cookie"]) h["Cookie"] = "g=true";
   return h;

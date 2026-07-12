@@ -80,7 +80,7 @@ function withDefaultHeaders(h) {
   if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = USER_AGENT;
   if (!h["Accept"] && !h["accept"]) h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
   if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7";
-  if (!h["Accept-Encoding"] && !h["accept-encoding"]) h["Accept-Encoding"] = "identity";
+  // NOTE: do NOT set Accept-Encoding (Nuvio/OkHttp handles gzip only when absent). Match Anime-Sama.
   if (!h["Cookie"] && !h["cookie"]) h["Cookie"] = "g=true";
   return h;
 }

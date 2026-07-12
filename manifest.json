@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.14.0",
+  "version": "1.17.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -28,7 +28,7 @@
       "id": "french-manga",
       "name": "🍥 French-Manga",
       "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo)",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "author": "",
       "supportedTypes": [
         "movie",
@@ -50,7 +50,7 @@
       "id": "yablom",
       "name": "🎬 Yablom",
       "description": "Films VF/VOSTFR depuis yablom.com (Sharecloudy HLS)",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "author": "",
       "supportedTypes": [
         "movie"
@@ -69,7 +69,7 @@
       "id": "fs20",
       "name": "🎥 French Stream",
       "description": "Films & séries live-action VF/VOSTFR depuis fs20.lol (Vidzy, Uqload)",
-      "version": "1.0.6",
+      "version": "1.0.8",
       "author": "",
       "supportedTypes": [
         "movie",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v8 (léger)",
-      "description": "Diagnostic v8: vrai provider French Stream, LÉGER (sans watchdog), log du temps de chaque requête (Z01, Z02...). Ouvre Oppenheimer (film) et lis les lignes Z.",
-      "version": "8.0.0",
+      "name": "🔧 DIAG v10",
+      "description": "Doit afficher 'BUILD = FIX2' en premiere ligne. Ouvre Oppenheimer.",
+      "version": "10.0.0",
       "author": "",
       "supportedTypes": [
         "movie",

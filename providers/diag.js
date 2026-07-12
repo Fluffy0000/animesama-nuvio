@@ -98,7 +98,9 @@ function withDefaultHeaders(h) {
   if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = USER_AGENT;
   if (!h["Accept"] && !h["accept"]) h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
   if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7";
-  if (!h["Accept-Encoding"] && !h["accept-encoding"]) h["Accept-Encoding"] = "identity";
+  // NOTE: do NOT set Accept-Encoding. Nuvio's OkHttp handles gzip transparently only when
+  // the header is absent; forcing "identity" can yield an undecoded/odd body. Anime-Sama
+  // (which works) never sets it — match that.
   return h;
 }
 function fetchOnce(url, opts, timeoutMs) {
@@ -219,7 +221,7 @@ function stripAccents(s) {
   }
 }
 function slugify(t) {
-  return stripAccents(String(t).toLowerCase()).replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return stripAccents(String(t).toLowerCase()).replace(/['’\\]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function decodeEntities(s) {
   if (!s) return "";
@@ -681,11 +683,13 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       __dlog(LOG + " no player links");
       return [];
     }
-    var groups = yield runBatched(jobs, function(job) {
-      return buildStreams(job.hostKey, job.embedUrl, job.langKey, job.epNum, job.langText);
-    }, 3);
     var streams = [];
-    for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+    for (var ji = 0; ji < jobs.length; ji++) {
+      var jb = jobs[ji];
+      var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
+      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+      if (streams.length) break;
+    }
     sortStreams(streams);
     __dlog(LOG + " => " + streams.length + " streams");
     return streams;
@@ -701,6 +705,7 @@ function __origGetStreams(tmdbId, mediaType, season, episode) {
 /* ---- DIAG v8 wrapper: real fs20, no watchdog ---- */
 function getStreams(tmdbId, mediaType, season, episode) {
   __LOGS.length = 0; __FN = 0; __T0 = Date.now();
+  __dlog("BUILD = FIX3 (apostrophe+resilience+no-accept-encoding)");
   __dlog("START args=" + JSON.stringify([tmdbId, mediaType, season, episode]));
   return __origGetStreams(tmdbId, mediaType, season, episode).then(function (streams) {
     var out = (streams || []).slice();
