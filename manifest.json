@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v7",
-      "description": "Diagnostic v7: vrai provider French Stream avec exports standards, log de CHAQUE requête (Z01, Z02...) + garde anti-blocage. Si le nom affiché n'est pas 'DIAG v7', tu as une vieille version en cache.",
-      "version": "7.0.0",
+      "name": "🔧 DIAG v8 (léger)",
+      "description": "Diagnostic v8: vrai provider French Stream, LÉGER (sans watchdog), log du temps de chaque requête (Z01, Z02...). Ouvre Oppenheimer (film) et lis les lignes Z.",
+      "version": "8.0.0",
       "author": "",
       "supportedTypes": [
         "movie",

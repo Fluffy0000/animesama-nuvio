@@ -1,4 +1,4 @@
-/* diag v7 - real fs20, standard exports, per-fetch logs, watchdog */
+/* diag v8 - real fs20, light, per-fetch timing */
 /* fs20 - built 2026-07-10T14:16:38.305Z */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -39,21 +39,18 @@ var __async = (__this, __arguments, generator) => {
 };
 
 
-/* ---- DIAG v6 helpers (no global shadowing) ---- */
+/* ---- DIAG v8 helpers ---- */
 var __LOGS = [];
 var __FN = 0;
+var __T0 = Date.now();
 function __dlog() {
   var a = [];
   for (var i = 0; i < arguments.length; i++) a.push(String(arguments[i]));
-  __LOGS.push(a.join(" "));
+  __LOGS.push((Date.now() - __T0) + "ms | " + a.join(" "));
 }
 function __fake(msg) {
-  return {
-    name: msg, title: msg,
-    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-    quality: "DIAG", language: "DIAG", provider: "DIAG",
-    headers: { "User-Agent": "Mozilla/5.0" }
-  };
+  return { name: msg, title: msg, url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    quality: "DIAG", language: "DIAG", provider: "DIAG", headers: { "User-Agent": "Mozilla/5.0" } };
 }
 
 // src/fs20/index.js
@@ -105,7 +102,7 @@ function withDefaultHeaders(h) {
   return h;
 }
 function fetchOnce(url, opts, timeoutMs) {
-  __dlog("F#" + (++__FN) + " " + String(url).slice(0, 70));
+  var __ft0 = Date.now(); var __fk = "F#" + (++__FN) + " " + String(url).slice(0, 55);
   var ctrl = null, tid = null;
   try {
     ctrl = new AbortController();
@@ -129,9 +126,11 @@ function fetchOnce(url, opts, timeoutMs) {
   }
   return p.then(function(r) {
     safeClearTimeout(tid);
+    __dlog(__fk + " -> " + (r ? (r.status||"?") : "null") + " " + (Date.now()-__ft0) + "ms");
     return r;
   }).catch(function() {
     safeClearTimeout(tid);
+    __dlog(__fk + " -> THREW " + (Date.now()-__ft0) + "ms");
     return null;
   });
 }
@@ -699,37 +698,19 @@ function __origGetStreams(tmdbId, mediaType, season, episode) {
   });
 }
 
-/* ---- DIAG v7 wrapper: exported through the untouched standard __export path ---- */
-function __clock(n) {
-  // sequential real fetches ~= a clock that needs no setTimeout (~100-250ms each)
-  var i = 0;
-  function step() {
-    if (i++ >= n) return Promise.resolve("__CLOCK__");
-    var p;
-    try { p = fetch("https://fs20.lol/", { headers: { "User-Agent": "Mozilla/5.0" } }); }
-    catch (e) { p = Promise.resolve(null); }
-    return p.then(function (r) { try { return r ? r.text() : null; } catch (e) { return null; } })
-            .then(step, step);
-  }
-  return step();
-}
+/* ---- DIAG v8 wrapper: real fs20, no watchdog ---- */
 function getStreams(tmdbId, mediaType, season, episode) {
-  __LOGS.length = 0; __FN = 0;
-  __dlog("EVAL OK, wrapper called. ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
-  var t0 = Date.now();
-  var real;
-  try { real = __origGetStreams(tmdbId, mediaType, season, episode); }
-  catch (e) { real = Promise.resolve("__SYNCTHROW__ " + (e && e.message ? e.message : e)); }
-  function report(res) {
-    var out = [];
-    if (res === "__CLOCK__") __dlog("WATCHDOG: NOT finished after " + (Date.now() - t0) + "ms -> HANG after last F# line");
-    else if (typeof res === "string" && res.indexOf("__SYNCTHROW__") === 0) __dlog(res);
-    else { out = (res || []).slice(); __dlog("DONE in " + (Date.now() - t0) + "ms, real streams=" + (res ? res.length : "null")); }
+  __LOGS.length = 0; __FN = 0; __T0 = Date.now();
+  __dlog("START args=" + JSON.stringify([tmdbId, mediaType, season, episode]));
+  return __origGetStreams(tmdbId, mediaType, season, episode).then(function (streams) {
+    var out = (streams || []).slice();
+    __dlog("END streams=" + (streams ? streams.length : "null"));
     for (var i = 0; i < __LOGS.length; i++) out.push(__fake("Z" + (i < 9 ? "0" : "") + (i + 1) + ". " + __LOGS[i]));
     return out;
-  }
-  return Promise.race([real, __clock(30)]).then(report, function (e) {
-    __dlog("CRASH: " + (e && e.message ? e.message : e) + (e && e.stack ? " | " + String(e.stack).slice(0, 120) : ""));
-    return report(null);
+  }, function (e) {
+    __dlog("CRASH: " + (e && e.message ? e.message : e));
+    var out = [];
+    for (var i = 0; i < __LOGS.length; i++) out.push(__fake("Z" + (i < 9 ? "0" : "") + (i + 1) + ". " + __LOGS[i]));
+    return out;
   });
 }
