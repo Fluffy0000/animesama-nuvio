@@ -1,4 +1,4 @@
-/* diag v5 — REAL fs20 provider with internal logs surfaced as stream rows */
+/* diag v6 - real fs20 + per-fetch logs + timer-free watchdog */
 /* fs20 - built 2026-07-10T14:16:38.305Z */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -39,19 +39,14 @@ var __async = (__this, __arguments, generator) => {
 };
 
 
-/* ---- DIAG v5: log capture (shadows console inside this module only) ---- */
+/* ---- DIAG v6 helpers (no global shadowing) ---- */
 var __LOGS = [];
-var __origConsole = (typeof console !== "undefined") ? console : null;
-var console = {
-  log: function () {
-    var a = [];
-    for (var i = 0; i < arguments.length; i++) a.push(String(arguments[i]));
-    var s = a.join(" ");
-    __LOGS.push(s);
-    try { if (__origConsole && __origConsole.log) __origConsole.log(s); } catch (e) {}
-  },
-  warn: function () {}, error: function () {}
-};
+var __FN = 0;
+function __dlog() {
+  var a = [];
+  for (var i = 0; i < arguments.length; i++) a.push(String(arguments[i]));
+  __LOGS.push(a.join(" "));
+}
 function __fake(msg) {
   return {
     name: msg, title: msg,
@@ -110,6 +105,7 @@ function withDefaultHeaders(h) {
   return h;
 }
 function fetchOnce(url, opts, timeoutMs) {
+  __dlog("F#" + (++__FN) + " " + String(url).slice(0, 70));
   var ctrl = null, tid = null;
   try {
     ctrl = new AbortController();
@@ -596,12 +592,12 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     episode = episode || 1;
     var info = yield getTmdbInfo(tmdbId, mediaType);
     if (!info.titles.length) {
-      console.log(LOG + " no TMDB titles");
+      __dlog(LOG + " no TMDB titles");
       return [];
     }
     var candSlugs = info.titles.map(slugify);
     var base = yield resolveBase();
-    console.log(LOG + " base=" + base + " " + mediaType + "/" + tmdbId + (isMovie ? "" : " S" + season + "E" + episode) + " | " + info.titles.slice(0, 2).join(" | "));
+    __dlog(LOG + " base=" + base + " " + mediaType + "/" + tmdbId + (isMovie ? "" : " S" + season + "E" + episode) + " | " + info.titles.slice(0, 2).join(" | "));
     var queries = buildQueries(info.titles);
     var items = [], byId = {};
     for (var q = 0; q < queries.length; q++) {
@@ -614,7 +610,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       }
     }
     if (!items.length) {
-      console.log(LOG + " search empty");
+      __dlog(LOG + " search empty");
       return [];
     }
     var jobs = [];
@@ -629,10 +625,10 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
         }
       }
       if (!best || bestScore < 90) {
-        console.log(LOG + " no film match");
+        __dlog(LOG + " no film match");
         return [];
       }
-      console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
+      __dlog(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
       var players = yield fetchFilmPlayers(base, best.newsId);
       for (var p = 0; p < players.length; p++) {
         var lk = players[p].lang === "VOSTFR" ? "vostfr" : "vf";
@@ -658,13 +654,13 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
         }
       }
       if (!seed || seedScore < 90) {
-        console.log(LOG + " no season match");
+        __dlog(LOG + " no season match");
         return [];
       }
-      console.log(LOG + " serie newsId=" + seed.newsId + " (" + seed.title + ")");
+      __dlog(LOG + " serie newsId=" + seed.newsId + " (" + seed.title + ")");
       var eps = yield fetchSeriesEpisodes(base, seed.newsId);
       if (!eps) {
-        console.log(LOG + " episodes API empty");
+        __dlog(LOG + " episodes API empty");
         return [];
       }
       var vers = ["vf", "vostfr", "vo"];
@@ -683,7 +679,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       }
     }
     if (!jobs.length) {
-      console.log(LOG + " no player links");
+      __dlog(LOG + " no player links");
       return [];
     }
     var groups = yield runBatched(jobs, function(job) {
@@ -692,36 +688,50 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     var streams = [];
     for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
     sortStreams(streams);
-    console.log(LOG + " => " + streams.length + " streams");
+    __dlog(LOG + " => " + streams.length + " streams");
     return streams;
   });
 }
 function getStreams(tmdbId, mediaType, season, episode) {
   return getStreamsImpl(tmdbId, mediaType, season, episode).catch(function(e) {
-    console.log(LOG + " Error: " + (e && e.message ? e.message : e));
+    __dlog(LOG + " Error: " + (e && e.message ? e.message : e));
     return [];
   });
 }
 
-/* ---- DIAG v5 wrapper: run the REAL fs20 provider, then append its internal logs ---- */
+/* ---- DIAG v6 wrapper: race the real provider against a timer-free watchdog ---- */
+function __clock(n) {
+  // sequential real fetches ~= a clock that needs no setTimeout (~100-250ms each)
+  var i = 0;
+  function step() {
+    if (i++ >= n) return Promise.resolve("__CLOCK__");
+    var p;
+    try { p = fetch("https://fs20.lol/", { headers: { "User-Agent": "Mozilla/5.0" } }); }
+    catch (e) { p = Promise.resolve(null); }
+    return p.then(function (r) { try { return r ? r.text() : null; } catch (e) { return null; } })
+            .then(step, step);
+  }
+  return step();
+}
 var __realGetStreams = getStreams;
 function __diagGetStreams(tmdbId, mediaType, season, episode) {
-  __LOGS.length = 0;
-  __LOGS.push("ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
+  __LOGS.length = 0; __FN = 0;
+  __dlog("ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
   var t0 = Date.now();
-  var p;
-  try { p = __realGetStreams(tmdbId, mediaType, season, episode); }
-  catch (e) { p = Promise.resolve(null); __LOGS.push("SYNC-THROW: " + (e && e.message ? e.message : e)); }
-  return p.then(function (streams) {
-    var out = (streams || []).slice();
-    __LOGS.push("DONE in " + (Date.now() - t0) + "ms, real streams=" + (streams ? streams.length : "null"));
+  var real;
+  try { real = __realGetStreams(tmdbId, mediaType, season, episode); }
+  catch (e) { real = Promise.resolve("__SYNCTHROW__ " + (e && e.message ? e.message : e)); }
+  function report(res) {
+    var out = [];
+    if (res === "__CLOCK__") __dlog("WATCHDOG: getStreams NOT finished after " + (Date.now() - t0) + "ms -> HANG somewhere after the last F# line");
+    else if (typeof res === "string" && res.indexOf("__SYNCTHROW__") === 0) __dlog(res);
+    else { out = (res || []).slice(); __dlog("DONE in " + (Date.now() - t0) + "ms, real streams=" + (res ? res.length : "null")); }
     for (var i = 0; i < __LOGS.length; i++) out.push(__fake((i + 1) + ". " + __LOGS[i]));
     return out;
-  }).catch(function (e) {
-    var out = [__fake("0. CRASH: " + (e && e.message ? e.message : e))];
-    if (e && e.stack) out.push(__fake("0b. STACK: " + String(e.stack).slice(0, 160)));
-    for (var i = 0; i < __LOGS.length; i++) out.push(__fake((i + 1) + ". " + __LOGS[i]));
-    return out;
+  }
+  return Promise.race([real, __clock(30)]).then(report, function (e) {
+    __dlog("CRASH: " + (e && e.message ? e.message : e) + (e && e.stack ? " | " + String(e.stack).slice(0, 120) : ""));
+    return report(null);
   });
 }
 module.exports = { getStreams: __diagGetStreams };
