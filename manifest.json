@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG (fs20 réel + logs)",
-      "description": "Diagnostic v6: exécute le VRAI provider French Stream, log de CHAQUE requête (F#n) + garde anti-blocage. Ouvre un FILM (ex: Oppenheimer) et lis les lignes numérotées.",
-      "version": "6.0.0",
+      "name": "🔧 DIAG v7",
+      "description": "Diagnostic v7: vrai provider French Stream avec exports standards, log de CHAQUE requête (Z01, Z02...) + garde anti-blocage. Si le nom affiché n'est pas 'DIAG v7', tu as une vieille version en cache.",
+      "version": "7.0.0",
       "author": "",
       "supportedTypes": [
         "movie",

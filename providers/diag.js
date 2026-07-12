@@ -1,4 +1,4 @@
-/* diag v6 - real fs20 + per-fetch logs + timer-free watchdog */
+/* diag v7 - real fs20, standard exports, per-fetch logs, watchdog */
 /* fs20 - built 2026-07-10T14:16:38.305Z */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -692,14 +692,14 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     return streams;
   });
 }
-function getStreams(tmdbId, mediaType, season, episode) {
+function __origGetStreams(tmdbId, mediaType, season, episode) {
   return getStreamsImpl(tmdbId, mediaType, season, episode).catch(function(e) {
     __dlog(LOG + " Error: " + (e && e.message ? e.message : e));
     return [];
   });
 }
 
-/* ---- DIAG v6 wrapper: race the real provider against a timer-free watchdog ---- */
+/* ---- DIAG v7 wrapper: exported through the untouched standard __export path ---- */
 function __clock(n) {
   // sequential real fetches ~= a clock that needs no setTimeout (~100-250ms each)
   var i = 0;
@@ -713,20 +713,19 @@ function __clock(n) {
   }
   return step();
 }
-var __realGetStreams = getStreams;
-function __diagGetStreams(tmdbId, mediaType, season, episode) {
+function getStreams(tmdbId, mediaType, season, episode) {
   __LOGS.length = 0; __FN = 0;
-  __dlog("ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
+  __dlog("EVAL OK, wrapper called. ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
   var t0 = Date.now();
   var real;
-  try { real = __realGetStreams(tmdbId, mediaType, season, episode); }
+  try { real = __origGetStreams(tmdbId, mediaType, season, episode); }
   catch (e) { real = Promise.resolve("__SYNCTHROW__ " + (e && e.message ? e.message : e)); }
   function report(res) {
     var out = [];
-    if (res === "__CLOCK__") __dlog("WATCHDOG: getStreams NOT finished after " + (Date.now() - t0) + "ms -> HANG somewhere after the last F# line");
+    if (res === "__CLOCK__") __dlog("WATCHDOG: NOT finished after " + (Date.now() - t0) + "ms -> HANG after last F# line");
     else if (typeof res === "string" && res.indexOf("__SYNCTHROW__") === 0) __dlog(res);
     else { out = (res || []).slice(); __dlog("DONE in " + (Date.now() - t0) + "ms, real streams=" + (res ? res.length : "null")); }
-    for (var i = 0; i < __LOGS.length; i++) out.push(__fake((i + 1) + ". " + __LOGS[i]));
+    for (var i = 0; i < __LOGS.length; i++) out.push(__fake("Z" + (i < 9 ? "0" : "") + (i + 1) + ". " + __LOGS[i]));
     return out;
   }
   return Promise.race([real, __clock(30)]).then(report, function (e) {
@@ -734,4 +733,3 @@ function __diagGetStreams(tmdbId, mediaType, season, episode) {
     return report(null);
   });
 }
-module.exports = { getStreams: __diagGetStreams };
