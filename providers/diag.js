@@ -1,4 +1,5 @@
-/* diag v2 — full-chain probe: site -> search -> film page -> embed host -> CDN .m3u8 */
+/* diag v5 — REAL fs20 provider with internal logs surfaced as stream rows */
+/* fs20 - built 2026-07-10T14:16:38.305Z */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -19,72 +20,309 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
-      try { step(generator.next(value)); } catch (e) { reject(e); }
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
     };
     var rejected = (value) => {
-      try { step(generator.throw(value)); } catch (e) { reject(e); }
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
     };
     var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
 
-// diag/diag.js
-var diag_exports = {};
-__export(diag_exports, { getStreams: () => getStreams });
-module.exports = __toCommonJS(diag_exports);
 
-var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-var HDRS = {
-  "User-Agent": UA,
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-  "Accept-Encoding": "identity"
+/* ---- DIAG v5: log capture (shadows console inside this module only) ---- */
+var __LOGS = [];
+var __origConsole = (typeof console !== "undefined") ? console : null;
+var console = {
+  log: function () {
+    var a = [];
+    for (var i = 0; i < arguments.length; i++) a.push(String(arguments[i]));
+    var s = a.join(" ");
+    __LOGS.push(s);
+    try { if (__origConsole && __origConsole.log) __origConsole.log(s); } catch (e) {}
+  },
+  warn: function () {}, error: function () {}
 };
-
-function fakeStream(msg) {
+function __fake(msg) {
   return {
-    name: msg,
-    title: msg,
+    name: msg, title: msg,
     url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-    quality: "DIAG",
-    language: "DIAG",
-    provider: "DIAG",
-    headers: { "User-Agent": UA }
+    quality: "DIAG", language: "DIAG", provider: "DIAG",
+    headers: { "User-Agent": "Mozilla/5.0" }
   };
 }
 
-// tolerant fetch: returns { status, body } and never throws
-function grab(url, options) {
-  return __async(this, null, function* () {
-    var t0 = Date.now();
+// src/fs20/index.js
+var index_exports = {};
+__export(index_exports, {
+  getStreams: () => getStreams
+});
+module.exports = __toCommonJS(index_exports);
+
+// src/fs20/http.js
+var USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
+var FALLBACK_HOSTS = [
+  "https://fs20.lol",
+  "https://french-stream.one",
+  "https://french-stream.club"
+];
+function safeSetTimeout(fn, ms) {
+  try {
+    if (typeof setTimeout === "function") return setTimeout(fn, ms);
+  } catch (e) {
+  }
+  return null;
+}
+function safeClearTimeout(id) {
+  try {
+    if (id !== null && typeof clearTimeout === "function") clearTimeout(id);
+  } catch (e) {
+  }
+}
+function sleep(ms) {
+  return new Promise(function(res) {
     try {
-      var r = yield fetch(url, options || { headers: HDRS });
-      var status = r ? (typeof r.status === "number" ? r.status : "?") : "null";
-      var body = "";
-      try { body = yield r.text(); } catch (e) { body = ""; }
-      var ms = Date.now() - t0;
-      return { status: status, body: body || "", ms: ms };
+      if (typeof setTimeout === "function") {
+        setTimeout(res, ms);
+        return;
+      }
     } catch (e) {
-      return { status: "THROW", body: "", ms: Date.now() - t0, err: (e && e.message ? e.message : String(e)) };
+    }
+    res();
+  });
+}
+function withDefaultHeaders(h) {
+  h = h || {};
+  if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = USER_AGENT;
+  if (!h["Accept"] && !h["accept"]) h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+  if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7";
+  if (!h["Accept-Encoding"] && !h["accept-encoding"]) h["Accept-Encoding"] = "identity";
+  return h;
+}
+function fetchOnce(url, opts, timeoutMs) {
+  var ctrl = null, tid = null;
+  try {
+    ctrl = new AbortController();
+  } catch (e) {
+  }
+  if (ctrl) tid = safeSetTimeout(function() {
+    try {
+      ctrl.abort();
+    } catch (e) {
+    }
+  }, timeoutMs);
+  var o = { method: opts.method, headers: opts.headers, redirect: "follow" };
+  if (opts.body !== void 0) o.body = opts.body;
+  if (ctrl) o.signal = ctrl.signal;
+  var p;
+  try {
+    p = fetch(url, o);
+  } catch (e) {
+    safeClearTimeout(tid);
+    return Promise.resolve(null);
+  }
+  return p.then(function(r) {
+    safeClearTimeout(tid);
+    return r;
+  }).catch(function() {
+    safeClearTimeout(tid);
+    return null;
+  });
+}
+function safeFetch(url, options, timeoutMs) {
+  return __async(this, null, function* () {
+    if (!options) options = {};
+    if (!timeoutMs) timeoutMs = 9e3;
+    var opts = { method: options.method || "GET", headers: withDefaultHeaders(options.headers), body: options.body };
+    var delays = [700, 2e3];
+    var r = null;
+    for (var attempt = 0; attempt <= delays.length; attempt++) {
+      r = yield fetchOnce(url, opts, timeoutMs);
+      if (isOk(r)) return r;
+      if (r && r.status >= 400 && r.status < 500 && r.status !== 429) return r;
+      if (attempt < delays.length) yield sleep(delays[attempt]);
+    }
+    return r;
+  });
+}
+function isOk(r) {
+  if (!r) return false;
+  if (typeof r.ok === "boolean") return r.ok;
+  if (typeof r.status === "number" && r.status > 0) return r.status >= 200 && r.status < 400;
+  return true;
+}
+function fetchText(url, o, t) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(url, o, t);
+    if (!isOk(r)) throw new Error("HTTP " + (r ? r.status : "err"));
+    return r.text();
+  });
+}
+function fetchJson(url, o, t) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(url, o, t);
+    if (!isOk(r)) return null;
+    try {
+      return JSON.parse(yield r.text());
+    } catch (e) {
+      return null;
     }
   });
 }
-
-function tag(body) {
-  var b = body || "";
-  if (b.indexOf("Just a moment") !== -1 || b.indexOf("cf-browser-verification") !== -1 || b.indexOf("Attention Required") !== -1)
-    return " [CLOUDFLARE-CHALLENGE]";
-  return "";
+var ACCENT_MAP = {
+  "\xE0": "a",
+  "\xE1": "a",
+  "\xE2": "a",
+  "\xE4": "a",
+  "\xE3": "a",
+  "\xE5": "a",
+  "\xE9": "e",
+  "\xE8": "e",
+  "\xEA": "e",
+  "\xEB": "e",
+  "\xED": "i",
+  "\xEC": "i",
+  "\xEE": "i",
+  "\xEF": "i",
+  "\xF3": "o",
+  "\xF2": "o",
+  "\xF4": "o",
+  "\xF6": "o",
+  "\xF5": "o",
+  "\xFA": "u",
+  "\xF9": "u",
+  "\xFB": "u",
+  "\xFC": "u",
+  "\xE7": "c",
+  "\xF1": "n",
+  "\u0153": "oe",
+  "\xE6": "ae",
+  "\xDF": "ss",
+  "\xFD": "y",
+  "\xFF": "y"
+};
+function stripAccents(s) {
+  try {
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  } catch (e) {
+    var o = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      o += ACCENT_MAP[c] || ACCENT_MAP[c.toLowerCase()] || c;
+    }
+    return o;
+  }
 }
-function line(label, res, extra) {
-  var s = label + ": HTTP " + res.status + " " + (res.body ? res.body.length : 0) + "o " + res.ms + "ms" + tag(res.body);
-  if (res.err) s += " ERR=" + res.err;
-  if (extra) s += " | " + extra;
-  return s;
+function slugify(t) {
+  return stripAccents(String(t).toLowerCase()).replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function decodeEntities(s) {
+  if (!s) return "";
+  return s.replace(/&amp;/g, "&").replace(/&#0?39;/g, "'").replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ").replace(/&eacute;/g, "\xE9").replace(/&egrave;/g, "\xE8").replace(/&agrave;/g, "\xE0").replace(/&ecirc;/g, "\xEA").replace(/&ocirc;/g, "\xF4").replace(/&icirc;/g, "\xEE").replace(/&ccedil;/g, "\xE7").replace(/&ucirc;/g, "\xFB").replace(/&acirc;/g, "\xE2").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+var cachedBase = null;
+function probeBase(base) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(base + "/", {}, 6e3);
+    if (!isOk(r)) return false;
+    try {
+      var h = yield r.text();
+      return h.indexOf("FRENCH STREAM") !== -1 || h.indexOf("engine/ajax") !== -1;
+    } catch (e) {
+      return false;
+    }
+  });
+}
+function resolveBase() {
+  return __async(this, null, function* () {
+    if (cachedBase) return cachedBase;
+    for (var i = 0; i < FALLBACK_HOSTS.length; i++) {
+      if (yield probeBase(FALLBACK_HOSTS[i])) {
+        cachedBase = FALLBACK_HOSTS[i];
+        return cachedBase;
+      }
+    }
+    cachedBase = FALLBACK_HOSTS[0];
+    return cachedBase;
+  });
+}
+function liveSearch(base, query) {
+  return __async(this, null, function* () {
+    var html;
+    try {
+      html = yield fetchText(base + "/engine/ajax/search.php", {
+        method: "POST",
+        headers: {
+          "User-Agent": USER_AGENT,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": base + "/"
+        },
+        body: "query=" + encodeURIComponent(query) + "&page=1"
+      }, 12e3);
+    } catch (e) {
+      return [];
+    }
+    var out = [];
+    var re = /location\.href='\/(\d+)-[^']*'[\s\S]*?search-title'>([^<]*)</g;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      var title = decodeEntities(m[2]).trim();
+      var ym = /\((\d{4})\)/.exec(title);
+      var sm = /saison\s*(\d+)/i.exec(title);
+      out.push({ newsId: m[1], title, year: ym ? ym[1] : null, season: sm ? parseInt(sm[1], 10) : null });
+    }
+    return out;
+  });
+}
+function fetchFilmPlayers(base, newsId) {
+  return __async(this, null, function* () {
+    var html;
+    try {
+      html = yield fetchText(base + "/index.php?newsid=" + newsId, { headers: { "User-Agent": USER_AGENT, "Referer": base + "/" } }, 12e3);
+    } catch (e) {
+      return [];
+    }
+    var out = [];
+    var re = /class="option"\s+data-url="([^"]+)"><span>([^<]*)</g;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      var url = m[1];
+      var label = m[2].toUpperCase();
+      var lang = /VOSTFR|VOST/.test(label) ? "VOSTFR" : "VF";
+      var vm = /(TRUEFRENCH|VF2|VFF|VFQ|FRENCH|VOSTFR|VO)/.exec(label);
+      out.push({ url, lang, variant: vm ? vm[1] : lang });
+    }
+    return out;
+  });
+}
+function fetchSeriesEpisodes(base, newsId) {
+  return __async(this, null, function* () {
+    var v = Math.floor(Date.now() / 3e4);
+    var paths = [
+      "/static/series/" + newsId + ".js?v=" + v,
+      "/data/eps_" + newsId + ".txt?v=" + v,
+      "/ep-data.php?id=" + newsId + "&format=js&v=" + v
+    ];
+    for (var i = 0; i < paths.length; i++) {
+      var j = yield fetchJson(base + paths[i], { headers: { "User-Agent": USER_AGENT, "Referer": base + "/index.php?newsid=" + newsId } }, 12e3);
+      if (j && (j.vf || j.vostfr || j.vo)) return j;
+    }
+    return null;
+  });
 }
 
-// --- minimal packed-JS unpacker (same as fs20/french-manga extractor) ---
+// src/fs20/extractor.js
 function unpackPacked(src) {
   var m = /\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'((?:[^'\\]|\\.)*)'\.split\('\|'\)/.exec(src);
   if (!m) return "";
@@ -93,211 +331,397 @@ function unpackPacked(src) {
   var c = parseInt(m[3], 10);
   var k = m[4].split("|");
   if (a > 62) return "";
-  while (c--) { if (k[c]) p = p.replace(new RegExp("\\b" + c.toString(a) + "\\b", "g"), k[c]); }
+  while (c--) {
+    if (k[c]) p = p.replace(new RegExp("\\b" + c.toString(a) + "\\b", "g"), k[c]);
+  }
   return p;
 }
-function findM3u8(text) {
-  var m = /https?:\/\/[^\s"'\\)]+\.m3u8[^\s"'\\)]*/i.exec(text); if (m) return m[0];
-  var e = /https?:\\\/\\\/[^\s"']*?\.m3u8[^\s"']*/i.exec(text); if (e) return e[0].replace(/\\\//g, "/");
+function findVideoUrl(text) {
+  var m = /https?:\/\/[^\s"'\\)]+\.m3u8[^\s"'\\)]*/i.exec(text);
+  if (m) return m[0];
+  m = /https?:\/\/[^\s"'\\)]+\.mp4[^\s"'\\)]*/i.exec(text);
+  if (m) return m[0];
+  var e = /https?:\\\/\\\/[^\s"']*?\.m3u8[^\s"']*/i.exec(text);
+  if (e) return e[0].replace(/\\\//g, "/");
+  e = /https?:\\\/\\\/[^\s"']*?\.mp4[^\s"']*/i.exec(text);
+  if (e) return e[0].replace(/\\\//g, "/");
   return null;
 }
-function originOf(url) { var m = /^(https?:\/\/[^/]+)/i.exec(url); return m ? m[1] : ""; }
-
-// ============================================================================
-// RUNTIME PRIMITIVE TESTS — the shared http.js of the 3 broken providers relies
-// on setTimeout callbacks firing (sleep in its retry loop) and on AbortController.
-// Anime-Sama (which works) has NO retry/sleep. If setTimeout callbacks never fire
-// in Nuvio's scraper sandbox, sleep() hangs forever -> retry loop freezes -> the
-// provider never returns -> Nuvio kills it -> 0 streams. These probes prove it.
-// ============================================================================
-function runtimeTests(out) {
-  return __async(this, null, function* () {
-    // T1: does a setTimeout callback actually fire? We schedule it, then yield the
-    // event loop by awaiting a REAL network round-trip (~200ms) — no microtask spin
-    // that would starve the timer. If timers work, the flag flips during the fetch.
-    var t1fired = false, t1threw = "";
-    try { setTimeout(function () { t1fired = true; }, 100); } catch (e) { t1threw = String(e && e.message); }
-    yield grab("https://fs20.lol/", { headers: HDRS });          // burns ~200ms of real loop time
-    out.push(fakeStream("T1 setTimeout(100) after a real fetch: " + (t1threw ? ("THREW " + t1threw) : (t1fired ? "FIRED ✓" : "NEVER FIRED ✗ (timers dead -> sleep()/retry hangs)"))));
-
-    // T2: does the shared sleep() (exact copy from the 3 providers) resolve?
-    // Bounded yield loop: keep ceding the loop via real fetches until the sleep flag
-    // flips or we give up. Can never hang the DIAG (bounded), robust to fetch speed.
-    var t2done = false, t2t0 = Date.now();
-    (function () {
-      return new Promise(function (res) {
-        try { if (typeof setTimeout === "function") { setTimeout(res, 300); return; } } catch (e) {}
-        var end = Date.now() + 300; (function spin() { if (Date.now() >= end) return res(); Promise.resolve().then(spin); })();
-      });
-    })().then(function () { t2done = true; });
-    for (var t2i = 0; t2i < 8 && !t2done; t2i++) { yield grab("https://fs20.lol/", { headers: HDRS }); }
-    out.push(fakeStream("T2 shared sleep(300): " + (t2done ? ("RESOLVED in ~" + (Date.now() - t2t0) + "ms ✓") : "NOT resolved ✗ (retry loop would freeze here)")));
-
-    // T3: AbortController present?
-    out.push(fakeStream("T3 AbortController: " + (typeof AbortController === "function" ? "present ✓" : "ABSENT") + " | setTimeout: " + typeof setTimeout + " | clearTimeout: " + typeof clearTimeout));
-  });
+function originOf(url) {
+  var m = /^(https?:\/\/[^/]+)/i.exec(url);
+  return m ? m[1] : "";
 }
-
-// ---- fetch-option isolation: which option makes Nuvio's fetch fail? ----
-// The real providers add AbortController `signal` + `redirect:"follow"` to every request.
-// DIAG uses a bare fetch. If a provider-style option throws/fails in Nuvio, providers return
-// [] while DIAG works. These probes hit the SAME known-good URL 4 ways to find the culprit.
-function styledFetch(url, useSignal, useRedirect) {
+function resolveRelative(base, rel) {
+  if (/^https?:\/\//i.test(rel)) return rel;
+  if (rel.indexOf("//") === 0) return "https:" + rel;
+  if (rel.charAt(0) === "/") {
+    var m = /^(https?:\/\/[^/]+)/i.exec(base);
+    return m ? m[1] + rel : rel;
+  }
+  var q = base.indexOf("?");
+  var clean = q >= 0 ? base.slice(0, q) : base;
+  return clean.slice(0, clean.lastIndexOf("/") + 1) + rel;
+}
+var CODEC = { "avc1": "H.264", "hvc1": "H.265", "hev1": "H.265", "av01": "AV1" };
+function codecLabel(s) {
+  if (!s) return "";
+  var m = /(avc1|hvc1|hev1|av01)/i.exec(s);
+  return m ? CODEC[m[1].toLowerCase()] : "";
+}
+function heightToLabel(h) {
+  if (h >= 2e3) return "4K";
+  if (h >= 1e3) return "1080p";
+  if (h >= 700) return "720p";
+  if (h >= 460) return "480p";
+  if (h >= 300) return "360p";
+  return h ? h + "p" : "";
+}
+function explodeHls(masterUrl, referer) {
   return __async(this, null, function* () {
-    var t0 = Date.now();
-    var ctrl = null, tid = null, note = "";
-    var o = { method: "GET", headers: { "User-Agent": UA, "Accept-Encoding": "identity" } };
-    if (useRedirect) o.redirect = "follow";
-    if (useSignal) {
-      try { if (typeof AbortController === "function") { ctrl = new AbortController(); o.signal = ctrl.signal; } else note = "(no AbortController)"; }
-      catch (e) { note = "(AbortController threw: " + (e && e.message) + ")"; }
-      if (ctrl) { try { tid = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 9000); } catch (e) {} }
-    }
+    var r = yield safeFetch(masterUrl, { headers: { "User-Agent": USER_AGENT, "Referer": referer } }, 12e3);
+    if (!isOk(r)) return [];
+    var text;
     try {
-      var r = yield fetch(url, o);
-      try { if (tid !== null) clearTimeout(tid); } catch (e) {}
-      var st = r ? (typeof r.status === "number" ? r.status : "?") : "null";
-      var blen = 0; try { blen = (yield r.text()).length; } catch (e) {}
-      return { status: st, ms: Date.now() - t0, note: note, len: blen };
+      text = yield r.text();
     } catch (e) {
-      try { if (tid !== null) clearTimeout(tid); } catch (e2) {}
-      return { status: "THROW", ms: Date.now() - t0, note: note, err: (e && e.message ? e.message : String(e)) };
+      return [];
     }
-  });
-}
-function isoLine(label, res) {
-  var s = label + ": HTTP " + res.status + " " + (res.len || 0) + "o " + res.ms + "ms";
-  if (res.note) s += " " + res.note;
-  if (res.err) s += " ERR=" + res.err;
-  return s;
-}
-function fetchIsolation(out) {
-  return __async(this, null, function* () {
-    var U = "https://fs20.lol/";
-    out.push(fakeStream(isoLine("X1 bare fetch", yield styledFetch(U, false, false))));
-    out.push(fakeStream(isoLine("X2 +redirect:follow", yield styledFetch(U, false, true))));
-    out.push(fakeStream(isoLine("X3 +signal(Abort)", yield styledFetch(U, true, false))));
-    out.push(fakeStream(isoLine("X4 +signal+redirect (=provider style)", yield styledFetch(U, true, true))));
-  });
-}
-
-// ---- the real end-to-end chain for FRENCH-MANGA (an anime it has) ----
-// Proves, inside Nuvio, whether French-Manga resolves an anime to a playable .m3u8.
-function fmChain(out) {
-  return __async(this, null, function* () {
-    var base = "https://w16.french-manga.net";
-    // 1. search a known anime
-    var sres = yield grab(base + "/engine/ajax/search.php", {
-      method: "POST",
-      headers: {
-        "User-Agent": UA, "Accept-Encoding": "identity",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Requested-With": "XMLHttpRequest", "Referer": base + "/"
-      },
-      body: "query=" + encodeURIComponent("The Irregular at Magic High School") + "&page=1"
-    });
-    // prefer the "saison-1" result, else first
-    var newsId = null;
-    var re = /location\.href='\/(\d+)-([^']*)'/g, mm;
-    while ((mm = re.exec(sres.body)) !== null) {
-      if (!newsId) newsId = mm[1];
-      if (/saison-1\b/.test(mm[2])) { newsId = mm[1]; break; }
+    if (text.indexOf("#EXT") === -1) return [];
+    if (text.indexOf("#EXT-X-STREAM-INF") === -1) {
+      return [{ url: masterUrl, quality: "", height: 0, codec: "" }];
     }
-    out.push(fakeStream(line("FM.A search", sres, newsId ? ("newsId=" + newsId) : "NO newsId")));
-    if (!newsId) return;
-
-    // 2. episodes API (JSON)
-    var eres = yield grab(base + "/engine/ajax/manga_episodes_api.php?id=" + newsId, { headers: { "User-Agent": UA, "Referer": base + "/index.php?newsid=" + newsId } });
-    var embed = null, lang = "";
-    try {
-      var j = JSON.parse(eres.body);
-      var langs = ["vostfr", "vf", "vo"];
-      for (var li = 0; li < langs.length && !embed; li++) {
-        var d = j[langs[li]];
-        if (!d) continue;
-        var ep = d["1"];
-        if (!ep) continue;
-        for (var hk in ep) { if (ep[hk] && /^https?:\/\//.test(ep[hk]) && /vidzy/i.test(ep[hk])) { embed = ep[hk]; lang = langs[li]; break; } }
-        if (!embed) { for (var hk2 in ep) { if (ep[hk2] && /^https?:\/\//.test(ep[hk2])) { embed = ep[hk2]; lang = langs[li]; break; } } }
-      }
-    } catch (e) {}
-    out.push(fakeStream(line("FM.B episodes API", eres, embed ? (lang + " embed=" + embed.slice(0, 40)) : "NO episode-1 embed in JSON")));
-    if (!embed) return;
-
-    // 3. resolve the embed host -> m3u8
-    var eref = originOf(embed) + "/";
-    var vres = yield grab(embed, { headers: { "User-Agent": UA, "Referer": eref } });
-    var m3u8 = findM3u8(unpackPacked(vres.body)) || findM3u8(vres.body);
-    out.push(fakeStream(line("FM.C embed host", vres, m3u8 ? ("m3u8 FOUND " + m3u8.slice(0, 45)) : "m3u8 NOT extracted")));
-    if (!m3u8) return;
-
-    // 4. CDN playlist
-    var cres = yield grab(m3u8, { headers: { "User-Agent": UA, "Referer": eref } });
-    out.push(fakeStream(line("FM.D CDN master.m3u8", cres, cres.body.indexOf("#EXT") !== -1 ? "VALID playlist ✓ (French-Manga WORKS in Nuvio)" : "reachable but NOT a playlist")));
-  });
-}
-
-// ---- the real end-to-end chain for fs20 (Oppenheimer) ----
-function fs20Chain(out) {
-  return __async(this, null, function* () {
-    // 1. search
-    var sres = yield grab("https://fs20.lol/engine/ajax/search.php", {
-      method: "POST",
-      headers: {
-        "User-Agent": UA, "Accept-Encoding": "identity",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Requested-With": "XMLHttpRequest", "Referer": "https://fs20.lol/"
-      },
-      body: "query=oppenheimer&page=1"
-    });
-    var idm = /location\.href='\/(\d+)-/.exec(sres.body);
-    var newsId = idm ? idm[1] : null;
-    out.push(fakeStream(line("A.fs20 search", sres, newsId ? ("newsId=" + newsId) : "NO newsId parsed")));
-    if (!newsId) return;
-
-    // 2. film page -> vidzy embed
-    var fres = yield grab("https://fs20.lol/index.php?newsid=" + newsId, { headers: { "User-Agent": UA, "Referer": "https://fs20.lol/" } });
-    var em = /class="option"\s+data-url="([^"]+)"/.exec(fres.body);
-    var embed = em ? em[1] : null;
-    out.push(fakeStream(line("B.fs20 film page", fres, embed ? ("embed=" + embed.slice(0, 40)) : "NO embed parsed")));
-    if (!embed) return;
-
-    // 3. embed host page
-    var eref = originOf(embed) + "/";
-    var eres = yield grab(embed, { headers: { "User-Agent": UA, "Referer": eref } });
-    var hasPacked = eres.body.indexOf("}(") !== -1 && /eval|p,a,c,k/.test(eres.body);
-    out.push(fakeStream(line("C.vidzy embed", eres, hasPacked ? "packed-JS present" : "NO packed JS (host changed?)")));
-
-    // 4. unpack -> m3u8
-    var unpacked = unpackPacked(eres.body);
-    var m3u8 = findM3u8(unpacked) || findM3u8(eres.body);
-    out.push(fakeStream("D.vidzy unpack: " + (m3u8 ? ("m3u8 FOUND " + m3u8.slice(0, 50)) : "m3u8 NOT extracted (unpacker failed)")));
-    if (!m3u8) return;
-
-    // 5. fetch the real CDN master playlist — THIS is the actual video endpoint
-    var cres = yield grab(m3u8, { headers: { "User-Agent": UA, "Referer": eref } });
-    var isPlaylist = cres.body.indexOf("#EXT") !== -1;
-    out.push(fakeStream(line("E.CDN master.m3u8", cres, isPlaylist ? "VALID playlist ✓ (playback should work)" : "reachable but NOT a playlist")));
-  });
-}
-
-function run(tmdbId, mediaType, season, episode) {
-  return __async(this, null, function* () {
     var out = [];
-    // *** MOST IMPORTANT: runtime primitives the 3 broken providers depend on ***
-    yield runtimeTests(out);
-    // fetch-option isolation
-    yield fetchIsolation(out);
-    // real French-Manga chain for an anime it has (proves it in Nuvio)
-    yield fmChain(out);
-    // real fs20 movie chain
-    yield fs20Chain(out);
+    var lines = text.split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf("#EXT-X-STREAM-INF") !== 0) continue;
+      var attrs = lines[i];
+      var url = "";
+      for (var j = i + 1; j < lines.length; j++) {
+        var ln = lines[j].trim();
+        if (!ln) continue;
+        if (ln.charAt(0) === "#") continue;
+        url = ln;
+        break;
+      }
+      if (!url) continue;
+      var hm = /RESOLUTION=\d+x(\d+)/i.exec(attrs);
+      var height = hm ? parseInt(hm[1], 10) : 0;
+      var cm = /CODECS="([^"]*)"/i.exec(attrs);
+      out.push({ url: resolveRelative(masterUrl, url), quality: heightToLabel(height), height, codec: codecLabel(cm ? cm[1] : "") });
+    }
+    if (!out.length) out.push({ url: masterUrl, quality: "", height: 0, codec: "" });
     return out;
   });
 }
-
-function getStreams(tmdbId, mediaType, season, episode) {
-  return run(tmdbId, mediaType, season, episode).catch(function (e) {
-    return [fakeStream("DIAG crashed: " + (e && e.message ? e.message : e))];
+function resolveHost(hostKey, embedUrl) {
+  return __async(this, null, function* () {
+    var referer = originOf(embedUrl) + "/";
+    var r = yield safeFetch(embedUrl, { headers: { "User-Agent": USER_AGENT, "Referer": referer } }, 12e3);
+    if (!isOk(r)) return null;
+    var html;
+    try {
+      html = yield r.text();
+    } catch (e) {
+      return null;
+    }
+    var unpacked = unpackPacked(html);
+    var media = findVideoUrl(unpacked) || findVideoUrl(html);
+    if (!media) {
+      var fm = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
+      if (fm) {
+        var r2 = yield safeFetch(fm[1], { headers: { "User-Agent": USER_AGENT, "Referer": embedUrl } }, 12e3);
+        if (isOk(r2)) {
+          try {
+            var h2 = yield r2.text();
+            media = findVideoUrl(unpackPacked(h2)) || findVideoUrl(h2);
+            referer = originOf(fm[1]) + "/";
+          } catch (e) {
+          }
+        }
+      }
+    }
+    if (!media) return null;
+    var kind = /\.m3u8/i.test(media) ? "hls" : "mp4";
+    return { kind, masterUrl: media, referer };
   });
 }
+function mp4Alive(url, referer) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(url, { method: "GET", headers: { "User-Agent": USER_AGENT, "Referer": referer, "Range": "bytes=0-1" } }, 9e3);
+    if (!r) return true;
+    if (r.status === 403 || r.status === 404 || r.status === 410 || r.status >= 500) return false;
+    return true;
+  });
+}
+
+// src/fs20/index.js
+var LOG = "[fs20]";
+function getTmdbInfo(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    var kind = mediaType === "tv" ? "tv" : "movie";
+    var titles = [], seen = {}, year = null;
+    function add(t) {
+      if (!t) return;
+      var k = slugify(t);
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      titles.push(t);
+    }
+    var langs = ["fr-FR", "en-US"];
+    for (var i = 0; i < langs.length; i++) {
+      var d = yield fetchJson("https://api.themoviedb.org/3/" + kind + "/" + tmdbId + "?api_key=" + TMDB_API_KEY + "&language=" + langs[i], { headers: { "User-Agent": USER_AGENT } }, 9e3);
+      if (!d) continue;
+      if (!year) {
+        var rd = d.release_date || d.first_air_date || "";
+        var ym = /^(\d{4})/.exec(rd);
+        if (ym) year = ym[1];
+      }
+      add(d.title);
+      add(d.name);
+      add(d.original_title);
+      add(d.original_name);
+    }
+    return { titles, year };
+  });
+}
+function buildQueries(titles) {
+  var seen = {}, out = [];
+  function push(q) {
+    q = String(q).trim();
+    if (!q) return;
+    var k = q.toLowerCase();
+    if (seen[k]) return;
+    seen[k] = true;
+    out.push(q);
+  }
+  for (var i = 0; i < titles.length; i++) {
+    push(titles[i]);
+    var toks = String(titles[i]).match(/[A-Za-z0-9À-ſ]+/g) || [];
+    if (toks.length > 3) push(toks.slice(0, 3).join(" "));
+  }
+  return out;
+}
+function baseSlug(title) {
+  return slugify(String(title).replace(/\s*\(\d{4}\)\s*$/, "").replace(/[-–]\s*saison\s*\d+.*$/i, ""));
+}
+function scoreItem(item, candSlugs, year) {
+  var s = baseSlug(item.title);
+  if (!s) return -1;
+  var best = -1;
+  for (var i = 0; i < candSlugs.length; i++) {
+    var c = candSlugs[i];
+    if (!c) continue;
+    var base = -1;
+    if (s === c) base = 100;
+    else if (s.length > 4 && c.length > 4 && (s.indexOf(c) === 0 || c.indexOf(s) === 0)) base = 55;
+    if (base < 0) continue;
+    if (year && item.year) base += year === item.year ? 12 : -20;
+    if (base > best) best = base;
+  }
+  return best;
+}
+var HOST_NAME = { vidzy: "Vidzy", uqload: "Uqload", voe: "Voe", netu: "Netu", premium: "Premium" };
+var HOST_ORDER = ["vidzy", "uqload", "voe", "premium", "netu"];
+function langLabel(v) {
+  return v === "vostfr" ? "VOSTFR" : v === "vo" ? "VO" : "VF";
+}
+function langFlag(v) {
+  return v === "vostfr" || v === "vo" ? "\u{1F1EF}\u{1F1F5}" : "\u{1F1EB}\u{1F1F7}";
+}
+function buildStreams(hostKey, embedUrl, langKey, epNum, langText) {
+  return __async(this, null, function* () {
+    var resolved = yield resolveHost(hostKey, embedUrl);
+    if (!resolved) return [];
+    var name = HOST_NAME[hostKey] || hostKey.charAt(0).toUpperCase() + hostKey.slice(1);
+    var label = langText || langLabel(langKey), flag = langFlag(langKey);
+    if (resolved.kind === "hls") {
+      var variants = yield explodeHls(resolved.masterUrl, resolved.referer);
+      if (!variants.length) return [];
+      return variants.map(function(v) {
+        var parts = [name];
+        if (v.quality) parts.push(v.quality);
+        if (v.codec && v.codec !== "H.264") parts.push(v.codec);
+        parts.push(label);
+        return {
+          name: flag + " " + parts.join(" \xB7 "),
+          title: name + " \xB7 " + (v.quality || "HD") + " \xB7 " + label + (epNum ? " \xB7 Ep " + epNum : ""),
+          url: v.url,
+          quality: v.quality || "HD",
+          language: label,
+          provider: name,
+          headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+          _sort: { lang: langKey, height: v.height || 0, host: name }
+        };
+      });
+    }
+    var alive = yield mp4Alive(resolved.masterUrl, resolved.referer);
+    if (!alive) return [];
+    return [{
+      name: flag + " " + name + " \xB7 MP4 \xB7 " + label,
+      title: name + " \xB7 MP4 \xB7 " + label + (epNum ? " \xB7 Ep " + epNum : ""),
+      url: resolved.masterUrl,
+      quality: "HD",
+      language: label,
+      provider: name,
+      headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+      _sort: { lang: langKey, height: 1, host: name }
+    }];
+  });
+}
+function runBatched(items, worker, size) {
+  return __async(this, null, function* () {
+    var out = [];
+    for (var i = 0; i < items.length; i += size) {
+      var res = yield Promise.all(items.slice(i, i + size).map(worker));
+      for (var j = 0; j < res.length; j++) if (res[j]) out.push(res[j]);
+    }
+    return out;
+  });
+}
+function sortStreams(streams) {
+  var rank = { vf: 0, vostfr: 1, vo: 2 };
+  streams.sort(function(a, b) {
+    var la = rank[a._sort.lang], lb = rank[b._sort.lang];
+    if (la !== lb) return la - lb;
+    if (b._sort.height !== a._sort.height) return b._sort.height - a._sort.height;
+    return a._sort.host < b._sort.host ? -1 : 1;
+  });
+  for (var i = 0; i < streams.length; i++) delete streams[i]._sort;
+  return streams;
+}
+function getStreamsImpl(tmdbId, mediaType, season, episode) {
+  return __async(this, null, function* () {
+    var isMovie = mediaType !== "tv";
+    season = season || 1;
+    episode = episode || 1;
+    var info = yield getTmdbInfo(tmdbId, mediaType);
+    if (!info.titles.length) {
+      console.log(LOG + " no TMDB titles");
+      return [];
+    }
+    var candSlugs = info.titles.map(slugify);
+    var base = yield resolveBase();
+    console.log(LOG + " base=" + base + " " + mediaType + "/" + tmdbId + (isMovie ? "" : " S" + season + "E" + episode) + " | " + info.titles.slice(0, 2).join(" | "));
+    var queries = buildQueries(info.titles);
+    var items = [], byId = {};
+    for (var q = 0; q < queries.length; q++) {
+      var found = yield liveSearch(base, queries[q]);
+      for (var f = 0; f < found.length; f++) {
+        if (!byId[found[f].newsId]) {
+          byId[found[f].newsId] = 1;
+          items.push(found[f]);
+        }
+      }
+    }
+    if (!items.length) {
+      console.log(LOG + " search empty");
+      return [];
+    }
+    var jobs = [];
+    if (isMovie) {
+      var best = null, bestScore = -1;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].season) continue;
+        var sc = scoreItem(items[i], candSlugs, info.year);
+        if (sc > bestScore) {
+          bestScore = sc;
+          best = items[i];
+        }
+      }
+      if (!best || bestScore < 90) {
+        console.log(LOG + " no film match");
+        return [];
+      }
+      console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
+      var players = yield fetchFilmPlayers(base, best.newsId);
+      for (var p = 0; p < players.length; p++) {
+        var lk = players[p].lang === "VOSTFR" ? "vostfr" : "vf";
+        jobs.push({ hostKey: "vidzy", embedUrl: players[p].url, langKey: lk, epNum: null, langText: players[p].variant });
+      }
+    } else {
+      var seed = null, seedScore = -1;
+      for (var s = 0; s < items.length; s++) {
+        if (items[s].season !== season) continue;
+        var sc2 = scoreItem(items[s], candSlugs, null);
+        if (sc2 > seedScore) {
+          seedScore = sc2;
+          seed = items[s];
+        }
+      }
+      if (!seed && season === 1) {
+        for (var s2 = 0; s2 < items.length; s2++) {
+          var sc3 = scoreItem(items[s2], candSlugs, null);
+          if (sc3 > seedScore) {
+            seedScore = sc3;
+            seed = items[s2];
+          }
+        }
+      }
+      if (!seed || seedScore < 90) {
+        console.log(LOG + " no season match");
+        return [];
+      }
+      console.log(LOG + " serie newsId=" + seed.newsId + " (" + seed.title + ")");
+      var eps = yield fetchSeriesEpisodes(base, seed.newsId);
+      if (!eps) {
+        console.log(LOG + " episodes API empty");
+        return [];
+      }
+      var vers = ["vf", "vostfr", "vo"];
+      for (var vi = 0; vi < vers.length; vi++) {
+        var dict = eps[vers[vi]];
+        if (!dict) continue;
+        var ep = dict[String(episode)];
+        if (!ep) continue;
+        for (var h = 0; h < HOST_ORDER.length; h++) {
+          var hk = HOST_ORDER[h];
+          var url = ep[hk];
+          if (url && typeof url === "string" && /^https?:\/\//i.test(url)) {
+            jobs.push({ hostKey: hk, embedUrl: url, langKey: vers[vi], epNum: episode });
+          }
+        }
+      }
+    }
+    if (!jobs.length) {
+      console.log(LOG + " no player links");
+      return [];
+    }
+    var groups = yield runBatched(jobs, function(job) {
+      return buildStreams(job.hostKey, job.embedUrl, job.langKey, job.epNum, job.langText);
+    }, 3);
+    var streams = [];
+    for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+    sortStreams(streams);
+    console.log(LOG + " => " + streams.length + " streams");
+    return streams;
+  });
+}
+function getStreams(tmdbId, mediaType, season, episode) {
+  return getStreamsImpl(tmdbId, mediaType, season, episode).catch(function(e) {
+    console.log(LOG + " Error: " + (e && e.message ? e.message : e));
+    return [];
+  });
+}
+
+/* ---- DIAG v5 wrapper: run the REAL fs20 provider, then append its internal logs ---- */
+var __realGetStreams = getStreams;
+function __diagGetStreams(tmdbId, mediaType, season, episode) {
+  __LOGS.length = 0;
+  __LOGS.push("ARGS " + JSON.stringify([tmdbId, mediaType, season, episode]));
+  var t0 = Date.now();
+  var p;
+  try { p = __realGetStreams(tmdbId, mediaType, season, episode); }
+  catch (e) { p = Promise.resolve(null); __LOGS.push("SYNC-THROW: " + (e && e.message ? e.message : e)); }
+  return p.then(function (streams) {
+    var out = (streams || []).slice();
+    __LOGS.push("DONE in " + (Date.now() - t0) + "ms, real streams=" + (streams ? streams.length : "null"));
+    for (var i = 0; i < __LOGS.length; i++) out.push(__fake((i + 1) + ". " + __LOGS[i]));
+    return out;
+  }).catch(function (e) {
+    var out = [__fake("0. CRASH: " + (e && e.message ? e.message : e))];
+    if (e && e.stack) out.push(__fake("0b. STACK: " + String(e.stack).slice(0, 160)));
+    for (var i = 0; i < __LOGS.length; i++) out.push(__fake((i + 1) + ". " + __LOGS[i]));
+    return out;
+  });
+}
+module.exports = { getStreams: __diagGetStreams };

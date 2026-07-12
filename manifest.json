@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG (chaîne complète)",
-      "description": "Diagnostic v4: teste setTimeout/sleep (T1-T3), chaîne French-Manga (FM) + fs20 (A-E). Ouvre un film et lis surtout T1/T2.",
-      "version": "4.0.0",
+      "name": "🔧 DIAG (fs20 réel + logs)",
+      "description": "Diagnostic v5: exécute le VRAI provider French Stream et affiche ses logs internes ligne par ligne. Ouvre un FILM (ex: Oppenheimer) et lis les lignes numérotées.",
+      "version": "5.0.0",
       "author": "",
       "supportedTypes": [
         "movie",
