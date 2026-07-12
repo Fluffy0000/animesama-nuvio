@@ -88,8 +88,8 @@
     {
       "id": "diag",
       "name": "🔧 DIAG (chaîne complète)",
-      "description": "Diagnostic: teste toute la chaîne (site → recherche → page film → embed vidzy → CDN .m3u8). Ouvre un film et lis les lignes A→E.",
-      "version": "2.0.0",
+      "description": "Diagnostic v3: args reçus + isolation option fetch (X1→X4) + chaîne complète (A→E). Ouvre un film et lis toutes les lignes.",
+      "version": "3.0.0",
       "author": "",
       "supportedTypes": [
         "movie",

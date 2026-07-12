@@ -103,6 +103,49 @@ function findM3u8(text) {
 }
 function originOf(url) { var m = /^(https?:\/\/[^/]+)/i.exec(url); return m ? m[1] : ""; }
 
+// ---- fetch-option isolation: which option makes Nuvio's fetch fail? ----
+// The real providers add AbortController `signal` + `redirect:"follow"` to every request.
+// DIAG uses a bare fetch. If a provider-style option throws/fails in Nuvio, providers return
+// [] while DIAG works. These probes hit the SAME known-good URL 4 ways to find the culprit.
+function styledFetch(url, useSignal, useRedirect) {
+  return __async(this, null, function* () {
+    var t0 = Date.now();
+    var ctrl = null, tid = null, note = "";
+    var o = { method: "GET", headers: { "User-Agent": UA, "Accept-Encoding": "identity" } };
+    if (useRedirect) o.redirect = "follow";
+    if (useSignal) {
+      try { if (typeof AbortController === "function") { ctrl = new AbortController(); o.signal = ctrl.signal; } else note = "(no AbortController)"; }
+      catch (e) { note = "(AbortController threw: " + (e && e.message) + ")"; }
+      if (ctrl) { try { tid = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 9000); } catch (e) {} }
+    }
+    try {
+      var r = yield fetch(url, o);
+      try { if (tid !== null) clearTimeout(tid); } catch (e) {}
+      var st = r ? (typeof r.status === "number" ? r.status : "?") : "null";
+      var blen = 0; try { blen = (yield r.text()).length; } catch (e) {}
+      return { status: st, ms: Date.now() - t0, note: note, len: blen };
+    } catch (e) {
+      try { if (tid !== null) clearTimeout(tid); } catch (e2) {}
+      return { status: "THROW", ms: Date.now() - t0, note: note, err: (e && e.message ? e.message : String(e)) };
+    }
+  });
+}
+function isoLine(label, res) {
+  var s = label + ": HTTP " + res.status + " " + (res.len || 0) + "o " + res.ms + "ms";
+  if (res.note) s += " " + res.note;
+  if (res.err) s += " ERR=" + res.err;
+  return s;
+}
+function fetchIsolation(out) {
+  return __async(this, null, function* () {
+    var U = "https://fs20.lol/";
+    out.push(fakeStream(isoLine("X1 bare fetch", yield styledFetch(U, false, false))));
+    out.push(fakeStream(isoLine("X2 +redirect:follow", yield styledFetch(U, false, true))));
+    out.push(fakeStream(isoLine("X3 +signal(Abort)", yield styledFetch(U, true, false))));
+    out.push(fakeStream(isoLine("X4 +signal+redirect (=provider style)", yield styledFetch(U, true, true))));
+  });
+}
+
 // ---- the real end-to-end chain for fs20 (Oppenheimer) ----
 function fs20Chain(out) {
   return __async(this, null, function* () {
@@ -147,9 +190,13 @@ function fs20Chain(out) {
   });
 }
 
-function run() {
+function run(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     var out = [];
+    // 0. echo the ACTUAL arguments Nuvio passes (wrong args => providers return [] silently)
+    out.push(fakeStream("0.ARGS tmdbId=" + JSON.stringify(tmdbId) + " (" + typeof tmdbId + ") mediaType=" + JSON.stringify(mediaType) + " season=" + JSON.stringify(season) + " episode=" + JSON.stringify(episode)));
+    // fetch-option isolation (which option breaks Nuvio's fetch?)
+    yield fetchIsolation(out);
     // site-level reachability (like the old diag)
     out.push(fakeStream(line("1.TMDB", yield grab("https://api.themoviedb.org/3/movie/872585?api_key=439c478a771f35c05022f9feabcca01c&language=fr-FR"), (yield grab("https://api.themoviedb.org/3/movie/872585?api_key=439c478a771f35c05022f9feabcca01c&language=fr-FR")).body.slice(0, 30))));
     out.push(fakeStream(line("2.fs20 home", yield grab("https://fs20.lol/", { headers: HDRS }))));
@@ -168,7 +215,7 @@ function run() {
 }
 
 function getStreams(tmdbId, mediaType, season, episode) {
-  return run().catch(function (e) {
+  return run(tmdbId, mediaType, season, episode).catch(function (e) {
     return [fakeStream("DIAG crashed: " + (e && e.message ? e.message : e))];
   });
 }
