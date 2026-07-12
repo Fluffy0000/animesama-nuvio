@@ -782,9 +782,12 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " no host links for episode");
       return [];
     }
-    var groups = yield runBatched(jobs, buildStreamsForHost, 3);
     var streams = [];
-    for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+    for (var ji = 0; ji < jobs.length; ji++) {
+      var g = yield buildStreamsForHost(jobs[ji]);
+      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+      if (streams.length) break;
+    }
     var langRank = { vostfr: 0, vf: 1 };
     streams.sort(function(a, b) {
       var la = langRank[a._sort.lang], lb = langRank[b._sort.lang];

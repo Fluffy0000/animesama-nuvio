@@ -195,9 +195,17 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
 
   if (!jobs.length) { console.log(LOG + " no player links"); return []; }
 
-  var groups = await runBatched(jobs, function (job) { return buildStreams(job.hostKey, job.embedUrl, job.langKey, job.epNum, job.langText); }, 3);
+  // Resolve players ONE AT A TIME and return as soon as we have streams. Nuvio's runtime
+  // (QuickJS) uses blocking, serial fetch with a 60s cap and ignores AbortController, so a
+  // single hanging embed host would otherwise wipe out already-resolved streams (all-or-
+  // nothing). The first player is the one proven reachable; return it before risking the rest.
   var streams = [];
-  for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+  for (var ji = 0; ji < jobs.length; ji++) {
+    var jb = jobs[ji];
+    var g = await buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
+    for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+    if (streams.length) break;
+  }
   sortStreams(streams);
   console.log(LOG + " => " + streams.length + " streams");
   return streams;

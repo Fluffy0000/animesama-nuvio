@@ -662,11 +662,13 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " no player links");
       return [];
     }
-    var groups = yield runBatched(jobs, function(job) {
-      return buildStreams(job.hostKey, job.embedUrl, job.langKey, job.epNum, job.langText);
-    }, 3);
     var streams = [];
-    for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+    for (var ji = 0; ji < jobs.length; ji++) {
+      var jb = jobs[ji];
+      var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
+      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+      if (streams.length) break;
+    }
     sortStreams(streams);
     console.log(LOG + " => " + streams.length + " streams");
     return streams;

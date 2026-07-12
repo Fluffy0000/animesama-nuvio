@@ -274,9 +274,15 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
   }
   if (!jobs.length) { console.log(LOG + " no host links for episode"); return []; }
 
-  var groups = await runBatched(jobs, buildStreamsForHost, 3);
+  // Resolve hosts ONE AT A TIME, return as soon as we have streams: Nuvio's QuickJS runtime
+  // does blocking serial fetch with a 60s cap and ignores AbortController, so one hanging embed
+  // host would otherwise wipe out already-resolved streams. Return the first that works.
   var streams = [];
-  for (var g = 0; g < groups.length; g++) for (var x = 0; x < groups[g].length; x++) streams.push(groups[g][x]);
+  for (var ji = 0; ji < jobs.length; ji++) {
+    var g = await buildStreamsForHost(jobs[ji]);
+    for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+    if (streams.length) break;
+  }
 
   // sort: VOSTFR first, then quality desc, then host name
   var langRank = { vostfr: 0, vf: 1 };
