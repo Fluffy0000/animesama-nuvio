@@ -34,8 +34,10 @@ function safeClearTimeout(id) {
 function sleep(ms) {
   return new Promise(function (res) {
     try { if (typeof setTimeout === "function") { setTimeout(res, ms); return; } } catch (e) {}
-    var end = Date.now() + ms;
-    (function spin() { if (Date.now() >= end) return res(); Promise.resolve().then(spin); })();
+    // No timers in Nuvio's sandbox (Hermes): resolve immediately instead of a
+    // microtask busy-spin, which would block the JS thread for `ms` and get the
+    // scraper killed by Nuvio's watchdog. Retries then happen back-to-back.
+    res();
   });
 }
 

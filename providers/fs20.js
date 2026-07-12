@@ -74,11 +74,7 @@ function sleep(ms) {
       }
     } catch (e) {
     }
-    var end = Date.now() + ms;
-    (function spin() {
-      if (Date.now() >= end) return res();
-      Promise.resolve().then(spin);
-    })();
+    res();
   });
 }
 function withDefaultHeaders(h) {
