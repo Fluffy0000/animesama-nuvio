@@ -103,6 +103,41 @@ function findM3u8(text) {
 }
 function originOf(url) { var m = /^(https?:\/\/[^/]+)/i.exec(url); return m ? m[1] : ""; }
 
+// ============================================================================
+// RUNTIME PRIMITIVE TESTS — the shared http.js of the 3 broken providers relies
+// on setTimeout callbacks firing (sleep in its retry loop) and on AbortController.
+// Anime-Sama (which works) has NO retry/sleep. If setTimeout callbacks never fire
+// in Nuvio's scraper sandbox, sleep() hangs forever -> retry loop freezes -> the
+// provider never returns -> Nuvio kills it -> 0 streams. These probes prove it.
+// ============================================================================
+function runtimeTests(out) {
+  return __async(this, null, function* () {
+    // T1: does a setTimeout callback actually fire? We schedule it, then yield the
+    // event loop by awaiting a REAL network round-trip (~200ms) — no microtask spin
+    // that would starve the timer. If timers work, the flag flips during the fetch.
+    var t1fired = false, t1threw = "";
+    try { setTimeout(function () { t1fired = true; }, 100); } catch (e) { t1threw = String(e && e.message); }
+    yield grab("https://fs20.lol/", { headers: HDRS });          // burns ~200ms of real loop time
+    out.push(fakeStream("T1 setTimeout(100) after a real fetch: " + (t1threw ? ("THREW " + t1threw) : (t1fired ? "FIRED ✓" : "NEVER FIRED ✗ (timers dead -> sleep()/retry hangs)"))));
+
+    // T2: does the shared sleep() (exact copy from the 3 providers) resolve?
+    // Bounded yield loop: keep ceding the loop via real fetches until the sleep flag
+    // flips or we give up. Can never hang the DIAG (bounded), robust to fetch speed.
+    var t2done = false, t2t0 = Date.now();
+    (function () {
+      return new Promise(function (res) {
+        try { if (typeof setTimeout === "function") { setTimeout(res, 300); return; } } catch (e) {}
+        var end = Date.now() + 300; (function spin() { if (Date.now() >= end) return res(); Promise.resolve().then(spin); })();
+      });
+    })().then(function () { t2done = true; });
+    for (var t2i = 0; t2i < 8 && !t2done; t2i++) { yield grab("https://fs20.lol/", { headers: HDRS }); }
+    out.push(fakeStream("T2 shared sleep(300): " + (t2done ? ("RESOLVED in ~" + (Date.now() - t2t0) + "ms ✓") : "NOT resolved ✗ (retry loop would freeze here)")));
+
+    // T3: AbortController present?
+    out.push(fakeStream("T3 AbortController: " + (typeof AbortController === "function" ? "present ✓" : "ABSENT") + " | setTimeout: " + typeof setTimeout + " | clearTimeout: " + typeof clearTimeout));
+  });
+}
+
 // ---- fetch-option isolation: which option makes Nuvio's fetch fail? ----
 // The real providers add AbortController `signal` + `redirect:"follow"` to every request.
 // DIAG uses a bare fetch. If a provider-style option throws/fails in Nuvio, providers return
@@ -143,6 +178,62 @@ function fetchIsolation(out) {
     out.push(fakeStream(isoLine("X2 +redirect:follow", yield styledFetch(U, false, true))));
     out.push(fakeStream(isoLine("X3 +signal(Abort)", yield styledFetch(U, true, false))));
     out.push(fakeStream(isoLine("X4 +signal+redirect (=provider style)", yield styledFetch(U, true, true))));
+  });
+}
+
+// ---- the real end-to-end chain for FRENCH-MANGA (an anime it has) ----
+// Proves, inside Nuvio, whether French-Manga resolves an anime to a playable .m3u8.
+function fmChain(out) {
+  return __async(this, null, function* () {
+    var base = "https://w16.french-manga.net";
+    // 1. search a known anime
+    var sres = yield grab(base + "/engine/ajax/search.php", {
+      method: "POST",
+      headers: {
+        "User-Agent": UA, "Accept-Encoding": "identity",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Requested-With": "XMLHttpRequest", "Referer": base + "/"
+      },
+      body: "query=" + encodeURIComponent("The Irregular at Magic High School") + "&page=1"
+    });
+    // prefer the "saison-1" result, else first
+    var newsId = null;
+    var re = /location\.href='\/(\d+)-([^']*)'/g, mm;
+    while ((mm = re.exec(sres.body)) !== null) {
+      if (!newsId) newsId = mm[1];
+      if (/saison-1\b/.test(mm[2])) { newsId = mm[1]; break; }
+    }
+    out.push(fakeStream(line("FM.A search", sres, newsId ? ("newsId=" + newsId) : "NO newsId")));
+    if (!newsId) return;
+
+    // 2. episodes API (JSON)
+    var eres = yield grab(base + "/engine/ajax/manga_episodes_api.php?id=" + newsId, { headers: { "User-Agent": UA, "Referer": base + "/index.php?newsid=" + newsId } });
+    var embed = null, lang = "";
+    try {
+      var j = JSON.parse(eres.body);
+      var langs = ["vostfr", "vf", "vo"];
+      for (var li = 0; li < langs.length && !embed; li++) {
+        var d = j[langs[li]];
+        if (!d) continue;
+        var ep = d["1"];
+        if (!ep) continue;
+        for (var hk in ep) { if (ep[hk] && /^https?:\/\//.test(ep[hk]) && /vidzy/i.test(ep[hk])) { embed = ep[hk]; lang = langs[li]; break; } }
+        if (!embed) { for (var hk2 in ep) { if (ep[hk2] && /^https?:\/\//.test(ep[hk2])) { embed = ep[hk2]; lang = langs[li]; break; } } }
+      }
+    } catch (e) {}
+    out.push(fakeStream(line("FM.B episodes API", eres, embed ? (lang + " embed=" + embed.slice(0, 40)) : "NO episode-1 embed in JSON")));
+    if (!embed) return;
+
+    // 3. resolve the embed host -> m3u8
+    var eref = originOf(embed) + "/";
+    var vres = yield grab(embed, { headers: { "User-Agent": UA, "Referer": eref } });
+    var m3u8 = findM3u8(unpackPacked(vres.body)) || findM3u8(vres.body);
+    out.push(fakeStream(line("FM.C embed host", vres, m3u8 ? ("m3u8 FOUND " + m3u8.slice(0, 45)) : "m3u8 NOT extracted")));
+    if (!m3u8) return;
+
+    // 4. CDN playlist
+    var cres = yield grab(m3u8, { headers: { "User-Agent": UA, "Referer": eref } });
+    out.push(fakeStream(line("FM.D CDN master.m3u8", cres, cres.body.indexOf("#EXT") !== -1 ? "VALID playlist ✓ (French-Manga WORKS in Nuvio)" : "reachable but NOT a playlist")));
   });
 }
 
@@ -193,23 +284,14 @@ function fs20Chain(out) {
 function run(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     var out = [];
-    // 0. echo the ACTUAL arguments Nuvio passes (wrong args => providers return [] silently)
-    out.push(fakeStream("0.ARGS tmdbId=" + JSON.stringify(tmdbId) + " (" + typeof tmdbId + ") mediaType=" + JSON.stringify(mediaType) + " season=" + JSON.stringify(season) + " episode=" + JSON.stringify(episode)));
-    // fetch-option isolation (which option breaks Nuvio's fetch?)
+    // *** MOST IMPORTANT: runtime primitives the 3 broken providers depend on ***
+    yield runtimeTests(out);
+    // fetch-option isolation
     yield fetchIsolation(out);
-    // site-level reachability (like the old diag)
-    out.push(fakeStream(line("1.TMDB", yield grab("https://api.themoviedb.org/3/movie/872585?api_key=439c478a771f35c05022f9feabcca01c&language=fr-FR"), (yield grab("https://api.themoviedb.org/3/movie/872585?api_key=439c478a771f35c05022f9feabcca01c&language=fr-FR")).body.slice(0, 30))));
-    out.push(fakeStream(line("2.fs20 home", yield grab("https://fs20.lol/", { headers: HDRS }))));
-    out.push(fakeStream(line("3.frenchmanga", yield grab("https://w16.french-manga.net/", { headers: HDRS }))));
-    out.push(fakeStream(line("4.yablom", yield grab("https://yablom.com/", { headers: HDRS }))));
-
-    // FULL CHAIN — the part the old diag never tested
+    // real French-Manga chain for an anime it has (proves it in Nuvio)
+    yield fmChain(out);
+    // real fs20 movie chain
     yield fs20Chain(out);
-
-    // video hosts used by the other providers
-    out.push(fakeStream(line("F.sharecloudy (yablom host)", yield grab("https://sharecloudy.com/", { headers: HDRS }))));
-    out.push(fakeStream(line("G.luluvdo (fmanga host)", yield grab("https://luluvdo.com/", { headers: HDRS }))));
-    out.push(fakeStream(line("H.sibnet (animesama host)", yield grab("https://video.sibnet.ru/", { headers: HDRS }))));
     return out;
   });
 }

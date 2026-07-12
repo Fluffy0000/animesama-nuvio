@@ -88,8 +88,8 @@
     {
       "id": "diag",
       "name": "🔧 DIAG (chaîne complète)",
-      "description": "Diagnostic v3: args reçus + isolation option fetch (X1→X4) + chaîne complète (A→E). Ouvre un film et lis toutes les lignes.",
-      "version": "3.0.0",
+      "description": "Diagnostic v4: teste setTimeout/sleep (T1-T3), chaîne French-Manga (FM) + fs20 (A-E). Ouvre un film et lis surtout T1/T2.",
+      "version": "4.0.0",
       "author": "",
       "supportedTypes": [
         "movie",
