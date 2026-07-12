@@ -106,7 +106,7 @@ export function stripAccents(s) {
 }
 export function slugify(t) {
   return stripAccents(String(t).toLowerCase())
-    .replace(/['’]/g, "")
+    .replace(/['’\\]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }

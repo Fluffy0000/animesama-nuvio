@@ -201,7 +201,7 @@ function stripAccents(s) {
   }
 }
 function slugify(t) {
-  return stripAccents(String(t).toLowerCase()).replace(/['\u2019]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return stripAccents(String(t).toLowerCase()).replace(/['\u2019\\]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 var cachedBase = null;
 function probeHost(base) {

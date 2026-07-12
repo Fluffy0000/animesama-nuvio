@@ -200,7 +200,7 @@ function stripAccents(s) {
   }
 }
 function slugify(t) {
-  return stripAccents(String(t).toLowerCase()).replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return stripAccents(String(t).toLowerCase()).replace(/['’\\]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function decodeEntities(s) {
   if (!s) return "";
