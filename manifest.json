@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v10",
-      "description": "Doit afficher 'BUILD = FIX2' en premiere ligne. Ouvre Oppenheimer.",
-      "version": "10.0.0",
+      "name": "🔧 DIAG v11 (deploy check)",
+      "description": "Renvoie TOUJOURS 1 ligne. Montre la version + si le cookie anti-bot passe depuis ton tel.",
+      "version": "11.0.0",
       "author": "",
       "supportedTypes": [
         "movie",
