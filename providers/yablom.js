@@ -85,17 +85,8 @@ function withDefaultHeaders(h) {
   return h;
 }
 function fetchOnce(url, opts, timeoutMs) {
-  var ctrl = null, tid = null;
-  try {
-    ctrl = new AbortController();
-  } catch (e) {
-  }
-  if (ctrl) tid = safeSetTimeout(function() {
-    try {
-      ctrl.abort();
-    } catch (e) {
-    }
-  }, timeoutMs);
+  var ctrl = null;
+  try { ctrl = new AbortController(); } catch (e) {}
   var o = { method: opts.method, headers: opts.headers, redirect: "follow" };
   if (opts.body !== void 0) o.body = opts.body;
   if (ctrl) o.signal = ctrl.signal;
@@ -103,16 +94,17 @@ function fetchOnce(url, opts, timeoutMs) {
   try {
     p = fetch(url, o);
   } catch (e) {
-    safeClearTimeout(tid);
     return Promise.resolve(null);
   }
-  return p.then(function(r) {
-    safeClearTimeout(tid);
-    return r;
-  }).catch(function() {
-    safeClearTimeout(tid);
-    return null;
-  });
+  var fetchP = p.then(function(r) { return r; }, function() { return null; });
+  // REAL timeout via Promise.race (Nuvio ignores AbortController). Hanging fetch -> null -> move on.
+  if (typeof setTimeout === "function" && timeoutMs && timeoutMs > 0) {
+    var timeoutP = new Promise(function(res) {
+      setTimeout(function() { try { if (ctrl) ctrl.abort(); } catch (e) {} res(null); }, timeoutMs);
+    });
+    return Promise.race([fetchP, timeoutP]);
+  }
+  return fetchP;
 }
 function safeFetch(url, options, timeoutMs) {
   return __async(this, null, function* () {

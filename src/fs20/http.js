@@ -42,16 +42,23 @@ function withDefaultHeaders(h) {
 }
 
 function fetchOnce(url, opts, timeoutMs) {
-  var ctrl = null, tid = null;
+  var ctrl = null;
   try { ctrl = new AbortController(); } catch (e) {}
-  if (ctrl) tid = safeSetTimeout(function () { try { ctrl.abort(); } catch (e) {} }, timeoutMs);
   var o = { method: opts.method, headers: opts.headers, redirect: "follow" };
   if (opts.body !== undefined) o.body = opts.body;
   if (ctrl) o.signal = ctrl.signal;
   var p;
-  try { p = fetch(url, o); } catch (e) { safeClearTimeout(tid); return Promise.resolve(null); }
-  return p.then(function (r) { safeClearTimeout(tid); return r; })
-          .catch(function () { safeClearTimeout(tid); return null; });
+  try { p = fetch(url, o); } catch (e) { return Promise.resolve(null); }
+  var fetchP = p.then(function (r) { return r; }, function () { return null; });
+  // REAL timeout via Promise.race (Nuvio ignores AbortController, so this is the only working
+  // bound). Hanging fetch -> timer wins -> null -> provider moves on instead of freezing.
+  if (typeof setTimeout === "function" && timeoutMs && timeoutMs > 0) {
+    var timeoutP = new Promise(function (res) {
+      setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} res(null); }, timeoutMs);
+    });
+    return Promise.race([fetchP, timeoutP]);
+  }
+  return fetchP;
 }
 
 // Retry with backoff, but NEVER on a real 4xx (except 429) — the pattern that survives
