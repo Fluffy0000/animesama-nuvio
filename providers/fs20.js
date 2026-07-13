@@ -700,21 +700,16 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " no player links");
       return [];
     }
-    // Lock onto the FIRST host that yields streams and resolve only its jobs (both languages),
-    // then stop. In Nuvio's runtime a single hanging embed host (e.g. one blocked on the user's
-    // network) can't be aborted and would wipe out everything — so we never risk a second host
-    // once one works. Hosts are sorted best-first; explodeHls still gives that host's qualities.
+    // Return as soon as the FIRST embed yields streams. On this user's network, resolving a
+    // second embed hangs (blocking fetch, no abort possible) and wipes out everything. One
+    // reliable stream (all its HLS qualities via explodeHls) beats a hang. Hosts sorted best-first.
     var streams = [];
-    var lockedHost = null;
     var MAX_JOBS = 8;
     for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
       var jb = jobs[ji];
-      if (lockedHost && jb.hostKey !== lockedHost) break;
       var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
-      if (g.length) {
-        lockedHost = jb.hostKey;
-        for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
-      }
+      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+      if (streams.length) break;
     }
     sortStreams(streams);
     console.log(LOG + " => " + streams.length + " streams");
