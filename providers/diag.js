@@ -1,4 +1,4 @@
-/* diag v12 — full french-manga -> vidzy -> CDN chain probe. Always returns exactly ONE row. */
+/* diag v13 — probes the two FILM providers (fs20 + yablom) end-to-end on-device. Always ONE row. */
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
@@ -24,8 +24,7 @@ __export(diag_exports, { getStreams: () => getStreams });
 module.exports = __toCommonJS(diag_exports);
 
 var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-var VERSION = "DIAG v12 (chain probe)";
-var BASE = "https://w16.french-manga.net";
+var VERSION = "DIAG v13 (film chains)";
 
 function row(msg) {
   return {
@@ -36,8 +35,6 @@ function row(msg) {
     headers: { "User-Agent": UA }
   };
 }
-
-// Dean Edwards unpacker (same as our extractors)
 function unpackPacked(src) {
   var m = /\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'((?:[^'\\]|\\.)*)'\.split\('\|'\)/.exec(src);
   if (!m) return "";
@@ -45,78 +42,82 @@ function unpackPacked(src) {
   var a = parseInt(m[2], 10), c = parseInt(m[3], 10), k = m[4].split("|");
   if (a > 62) return "";
   try { while (c--) { if (k[c]) p = p.replace(new RegExp("\\b" + c.toString(a) + "\\b", "g"), k[c]); } }
-  catch (e) { return "TOSTRING_THREW:" + (e && e.message ? e.message : e); }
+  catch (e) { return "TOSTRING_THREW"; }
   return p;
 }
-function findM3u8(t) { var m = /https?:\/\/[^\s"'\\)]+\.m3u8[^\s"'\\)]*/i.exec(t); return m ? m[0] : null; }
+function findMedia(t) {
+  var m = /https?:\/\/[^\s"'\\)]+\.m3u8[^\s"'\\)]*/i.exec(t); if (m) return m[0];
+  m = /https?:\/\/[^\s"'\\)]+\.mp4[^\s"'\\)]*/i.exec(t); if (m) return m[0];
+  return null;
+}
+function status(r) { return r && typeof r.status === "number" ? r.status : "?"; }
 
-function check() {
+// ---------------- fs20 film chain ----------------
+function checkFs20() {
   return __async(this, null, function* () {
-    var out = [];
-    var firstUrl = null, hostKey = null, m3u8 = null;
-
-    // 1) search
+    var base = "https://fs20.lol", ck = "fsschal=1";
     try {
-      var r1 = yield fetch(BASE + "/engine/ajax/search.php", {
+      var r1 = yield fetch(base + "/engine/ajax/search.php", {
         method: "POST",
-        headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", "Referer": BASE + "/" },
-        body: "query=naruto&page=1"
+        headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", "Referer": base + "/", "Cookie": ck },
+        body: "query=inception&page=1"
       });
       var b1 = yield r1.text();
-      var ids = b1.match(/location\.href='\/(\d+)-/g) || [];
-      out.push("search=" + ids.length + "@" + r1.status);
-      var idm = /location\.href='\/(\d+)-/.exec(b1);
-      var newsId = idm ? idm[1] : null;
+      var items = [], re = /location\.href='\/(\d+)-[^']*'[\s\S]*?search-title'>([^<]*)</g, mm;
+      while ((mm = re.exec(b1)) !== null) items.push({ id: mm[1], title: mm[2] });
+      if (!items.length) return "fs20[search=0@" + status(r1) + " len" + b1.length + "]";
+      // first film without "saison"
+      var film = null;
+      for (var i = 0; i < items.length; i++) { if (!/saison/i.test(items[i].title)) { film = items[i]; break; } }
+      if (!film) film = items[0];
+      // film page -> players
+      var r2 = yield fetch(base + "/index.php?newsid=" + film.id, { headers: { "User-Agent": UA, "Referer": base + "/", "Cookie": ck } });
+      var b2 = yield r2.text();
+      var players = [], re2 = /class="option"\s+data-url="([^"]+)"><span>([^<]*)</g, m2;
+      while ((m2 = re2.exec(b2)) !== null) players.push(m2[1]);
+      if (!players.length) return "fs20[search=" + items.length + " film=" + film.id + " players=0@" + status(r2) + " len" + b2.length + "]";
+      // resolve first embed
+      var emb = players[0];
+      var org = (/^(https?:\/\/[^/]+)/i.exec(emb) || ["", ""])[1];
+      var r3 = yield fetch(emb, { headers: { "User-Agent": UA, "Referer": org + "/" } });
+      var b3 = yield r3.text();
+      var media = findMedia(unpackPacked(b3)) || findMedia(b3);
+      if (!media) return "fs20[search=" + items.length + " players=" + players.length + " embed@" + status(r3) + " NO-MEDIA]";
+      var r4 = yield fetch(media, { headers: { "User-Agent": UA, "Referer": org + "/" } });
+      var b4 = yield r4.text();
+      var tag = b4.indexOf("#EXT") !== -1 ? "#EXT-OK" : "NO-EXT";
+      return "fs20[OK search=" + items.length + " players=" + players.length + " CDN=" + status(r4) + "/" + tag + "]";
+    } catch (e) { return "fs20[THREW:" + (e && e.message ? e.message : e) + "]"; }
+  });
+}
 
-      // 2) episodes API
-      if (newsId) {
-        var r2 = yield fetch(BASE + "/engine/ajax/manga_episodes_api.php?id=" + newsId, { headers: { "User-Agent": UA, "Referer": BASE + "/index.php?newsid=" + newsId } });
-        var b2 = yield r2.text();
-        var j = null; try { j = JSON.parse(b2); } catch (e) {}
-        if (!j) { out.push("api=NOTJSON@" + r2.status + "(len" + b2.length + ")"); }
-        else {
-          var langObj = j.vf || j.vostfr || j.vo || null;
-          var ep = langObj ? (langObj["1"] || langObj[Object.keys(langObj)[0]]) : null;
-          if (ep) {
-            var keys = Object.keys(ep);
-            hostKey = ep.vidzy ? "vidzy" : keys[0];
-            firstUrl = ep[hostKey];
-            out.push("api=OK(" + keys.join(",") + ")");
-          } else { out.push("api=OK-but-noEp"); }
-        }
-      }
-    } catch (e) { out.push("search/api THREW:" + (e && e.message ? e.message : e)); }
-
-    // 3) embed -> unpack -> m3u8
-    if (firstUrl) {
-      try {
-        var origin = (/^(https?:\/\/[^/]+)/i.exec(firstUrl) || ["", ""])[1];
-        var r3 = yield fetch(firstUrl, { headers: { "User-Agent": UA, "Referer": BASE + "/" } });
-        var b3 = yield r3.text();
-        var up = unpackPacked(b3);
-        if (up.indexOf("THREW") === 0) { out.push("embed=" + up); }
-        else {
-          m3u8 = findM3u8(up) || findM3u8(b3);
-          out.push("embed=" + hostKey + "@" + r3.status + "(" + (m3u8 ? "m3u8OK" : "noM3u8,unpack" + up.length) + ")");
-        }
-      } catch (e) { out.push("embed THREW:" + (e && e.message ? e.message : e)); }
-    } else { out.push("embed=SKIP(noUrl)"); }
-
-    // 4) THE SUSPECT: fetch the CDN m3u8 (explodeHls step)
-    if (m3u8) {
-      try {
-        var cdnHost = (/^https?:\/\/([^/]+)/i.exec(m3u8) || ["", "?"])[1];
-        var r4 = yield fetch(m3u8, { headers: { "User-Agent": UA, "Referer": "https://vidzy.live/" } });
-        var b4 = yield r4.text();
-        var tag = b4.indexOf("#EXT") !== -1 ? "#EXT-OK" : "NO-EXT(len" + b4.length + ")";
-        out.push("CDN=" + r4.status + "/" + tag + "@" + cdnHost);
-      } catch (e) { out.push("CDN THREW:" + (e && e.message ? e.message : e)); }
-    } else { out.push("CDN=SKIP(noM3u8)"); }
-
-    return out.join(" | ");
+// ---------------- yablom film chain ----------------
+function checkYablom() {
+  return __async(this, null, function* () {
+    var O = "https://yablom.com", folder = "euvcw7", ck = "g=true";
+    try {
+      var r1 = yield fetch(O + "/" + folder + "/api_search.php?searchword=inception", { headers: { "User-Agent": UA, "Cookie": ck } });
+      var b1 = yield r1.text();
+      var j = null; try { j = JSON.parse(b1); } catch (e) {}
+      if (!j || !j.films) return "yablom[folder/api NOTJSON@" + status(r1) + " len" + b1.length + "]";
+      if (!j.films.length) return "yablom[search=0]";
+      var f = j.films[0], lm = /(\d+)\s*$/.exec(String(f.link || "")), id = lm ? lm[1] : null;
+      if (!id) return "yablom[search=" + j.films.length + " no-linkId]";
+      var r2 = yield fetch(O + "/" + folder + "/b/yablom/" + id, { headers: { "User-Agent": UA, "Cookie": ck } });
+      var b2 = yield r2.text();
+      var im = /src="(https?:\/\/[a-z0-9.-]+\/iframe\/[A-Za-z0-9]+)"/i.exec(b2) || /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(b2);
+      if (!im) return "yablom[search=" + j.films.length + " detail@" + status(r2) + " NO-IFRAME len" + b2.length + "]";
+      var eh = (/^https?:\/\/([^/]+)/i.exec(im[1]) || ["", "?"])[1];
+      return "yablom[OK search=" + j.films.length + " embed@" + status(r2) + "=" + eh + "]";
+    } catch (e) { return "yablom[THREW:" + (e && e.message ? e.message : e) + "]"; }
   });
 }
 
 function getStreams(tmdbId, mediaType, season, episode) {
-  return check().then(function (msg) { return [row(msg)]; }, function (e) { return [row("CRASH " + (e && e.message ? e.message : e))]; });
+  return __async(this, null, function* () {
+    var a, b;
+    try { a = yield checkFs20(); } catch (e) { a = "fs20[CRASH]"; }
+    try { b = yield checkYablom(); } catch (e) { b = "yablom[CRASH]"; }
+    return [row(a + " || " + b)];
+  }).then(function (x) { return x; }, function (e) { return [row("CRASH " + (e && e.message ? e.message : e))]; });
 }
