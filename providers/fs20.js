@@ -267,13 +267,33 @@ function liveSearch(base, query) {
 }
 function fetchFilmPlayers(base, newsId) {
   return __async(this, null, function* () {
+    var out = [];
+    // Primary: the real DLE JSON endpoint. Shape: { players: { <host>: { <langKey>: embedUrl } } }
+    var j = yield fetchJson(base + "/engine/ajax/film_api.php?id=" + newsId, { headers: { "User-Agent": USER_AGENT, "Referer": base + "/index.php?newsid=" + newsId } }, 12e3);
+    if (j && j.players && typeof j.players === "object") {
+      for (var host in j.players) {
+        if (!Object.prototype.hasOwnProperty.call(j.players, host)) continue;
+        var byLang = j.players[host];
+        if (!byLang || typeof byLang !== "object") continue;
+        for (var lk in byLang) {
+          if (!Object.prototype.hasOwnProperty.call(byLang, lk)) continue;
+          var u = byLang[lk];
+          if (!u || typeof u !== "string" || u.indexOf("http") !== 0) continue;
+          var lkl = String(lk).toLowerCase();
+          var lang0 = /vostfr|vost/.test(lkl) ? "VOSTFR" : (lkl === "vo" ? "VO" : "VF");
+          var variant0 = lkl === "vff" ? "VFF" : lkl === "vfq" ? "VFQ" : lkl === "vostfr" ? "VOSTFR" : lkl === "vo" ? "VO" : lang0;
+          out.push({ url: u, hostKey: host, lang: lang0, variant: variant0 });
+        }
+      }
+    }
+    if (out.length) return out;
+    // Fallback: scrape the HTML page (older layout).
     var html;
     try {
       html = yield fetchText(base + "/index.php?newsid=" + newsId, { headers: { "User-Agent": USER_AGENT, "Referer": base + "/" } }, 12e3);
     } catch (e) {
-      return [];
+      return out;
     }
-    var out = [];
     var re = /class="option"\s+data-url="([^"]+)"><span>([^<]*)</g;
     var m;
     while ((m = re.exec(html)) !== null) {
@@ -281,7 +301,8 @@ function fetchFilmPlayers(base, newsId) {
       var label = m[2].toUpperCase();
       var lang = /VOSTFR|VOST/.test(label) ? "VOSTFR" : "VF";
       var vm = /(TRUEFRENCH|VF2|VFF|VFQ|FRENCH|VOSTFR|VO)/.exec(label);
-      out.push({ url, lang, variant: vm ? vm[1] : lang });
+      var hk = /vidzy/i.test(url) ? "vidzy" : /uqload/i.test(url) ? "uqload" : /fsvid/i.test(url) ? "premium" : "generic";
+      out.push({ url, hostKey: hk, lang, variant: vm ? vm[1] : lang });
     }
     return out;
   });
@@ -608,15 +629,26 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
           best = items[i];
         }
       }
-      if (!best || bestScore < 90) {
-        console.log(LOG + " no film match");
+      if (!best || bestScore < 65) {
+        console.log(LOG + " no film match (best=" + bestScore + ")");
         return [];
       }
       console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
       var players = yield fetchFilmPlayers(base, best.newsId);
+      // resolve most-reliable hosts first (we return after the first player that yields streams)
+      var prio = { vidzy: 0, uqload: 1, premium: 2, voe: 3, sibnet: 4, netu: 5 };
+      players.sort(function (a, b) {
+        var pa = prio[a.hostKey]; if (pa === void 0) pa = 9;
+        var pb = prio[b.hostKey]; if (pb === void 0) pb = 9;
+        return pa - pb;
+      });
+      var seenJob = {};
       for (var p = 0; p < players.length; p++) {
-        var lk = players[p].lang === "VOSTFR" ? "vostfr" : "vf";
-        jobs.push({ hostKey: "vidzy", embedUrl: players[p].url, langKey: lk, epNum: null, langText: players[p].variant });
+        var lk = players[p].lang === "VOSTFR" ? "vostfr" : (players[p].lang === "VO" ? "vo" : "vf");
+        var jkey = (players[p].hostKey || "vidzy") + "|" + lk;
+        if (seenJob[jkey]) continue;        // one job per host+language (VF variants dedup)
+        seenJob[jkey] = 1;
+        jobs.push({ hostKey: players[p].hostKey || "vidzy", embedUrl: players[p].url, langKey: lk, epNum: null, langText: players[p].variant });
       }
     } else {
       var seed = null, seedScore = -1;
@@ -637,8 +669,10 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
           }
         }
       }
-      if (!seed || seedScore < 90) {
-        console.log(LOG + " no season match");
+      // Series: the site's items carry subtitles ("... : Un funeste présage") → prefix match
+      // base 55, and their years are per-OVA so year-anchoring hurts. Accept a bare prefix (>=55).
+      if (!seed || seedScore < 55) {
+        console.log(LOG + " no season match (best=" + seedScore + ")");
         return [];
       }
       console.log(LOG + " serie newsId=" + seed.newsId + " (" + seed.title + ")");
@@ -666,12 +700,16 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " no player links");
       return [];
     }
+    // Resolve several players (jobs sorted best-host-first, deduped by host+lang) to gather
+    // ALL qualities/languages — e.g. vidzy 480p AND uqload 1080p. Capped to stay within
+    // Nuvio's 60s blocking-serial budget. sortStreams() puts the best quality on top.
     var streams = [];
-    for (var ji = 0; ji < jobs.length; ji++) {
+    var MAX_JOBS = 8;
+    for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
       var jb = jobs[ji];
       var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
       for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
-      if (streams.length) break;
+      if (streams.length >= 6) break;   // enough qualities/langs gathered; stop wasting fetches
     }
     sortStreams(streams);
     console.log(LOG + " => " + streams.length + " streams");

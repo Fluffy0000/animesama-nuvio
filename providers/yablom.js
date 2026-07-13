@@ -434,7 +434,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           best = byId[id];
         }
       }
-      if (!best || bestScore < 90) return [];
+      if (!best || bestScore < 65) return [];
       var embed = yield fetchEmbedUrl(folder, best.id);
       if (!embed) return [];
       var res = yield resolveEmbed(embed);

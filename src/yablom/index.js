@@ -81,7 +81,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       var sc = scoreFilm(byId[id], candSlugs, info.year);
       if (sc > bestScore) { bestScore = sc; best = byId[id]; }
     }
-    if (!best || bestScore < 90) return []; // require a confident (exact-slug) match
+    if (!best || bestScore < 65) return []; // accept year-confirmed prefix (55+12=67), not just exact-slug
 
     var embed = await fetchEmbedUrl(folder, best.id);
     if (!embed) return [];

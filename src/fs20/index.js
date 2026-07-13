@@ -154,26 +154,39 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
       var sc = scoreItem(items[i], candSlugs, info.year);
       if (sc > bestScore) { bestScore = sc; best = items[i]; }
     }
-    if (!best || bestScore < 90) { console.log(LOG + " no film match"); return []; }
+    // Accept a year-confirmed prefix match (base 55 + year 12 = 67). The old >=90 threshold
+    // rejected present titles whose site name has an extra subtitle/season suffix.
+    if (!best || bestScore < 65) { console.log(LOG + " no film match (best=" + bestScore + ")"); return []; }
     console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
     var players = await fetchFilmPlayers(base, best.newsId);
+    // resolve most-reliable hosts first (we return after the first player that yields streams)
+    var prio = { vidzy: 0, uqload: 1, premium: 2, voe: 3, sibnet: 4, netu: 5 };
+    players.sort(function (a, b) {
+      var pa = prio[a.hostKey]; if (pa === undefined) pa = 9;
+      var pb = prio[b.hostKey]; if (pb === undefined) pb = 9;
+      return pa - pb;
+    });
+    var seenJob = {};
     for (var p = 0; p < players.length; p++) {
-      var lk = players[p].lang === "VOSTFR" ? "vostfr" : "vf";
-      jobs.push({ hostKey: "vidzy", embedUrl: players[p].url, langKey: lk, epNum: null, langText: players[p].variant });
+      var lk = players[p].lang === "VOSTFR" ? "vostfr" : (players[p].lang === "VO" ? "vo" : "vf");
+      var jkey = (players[p].hostKey || "vidzy") + "|" + lk;
+      if (seenJob[jkey]) continue;        // one job per host+language (VF variants dedup)
+      seenJob[jkey] = 1;
+      jobs.push({ hostKey: players[p].hostKey || "vidzy", embedUrl: players[p].url, langKey: lk, epNum: null, langText: players[p].variant });
     }
   } else {
     // séries: item matching "<title> - Saison <season>"
     var seed = null, seedScore = -1;
     for (var s = 0; s < items.length; s++) {
       if (items[s].season !== season) continue;
-      var sc2 = scoreItem(items[s], candSlugs, null);
+      var sc2 = scoreItem(items[s], candSlugs, info.year);
       if (sc2 > seedScore) { seedScore = sc2; seed = items[s]; }
     }
     // fallback: season 1 requested but not labelled → best non-season / any match
     if (!seed && season === 1) {
-      for (var s2 = 0; s2 < items.length; s2++) { var sc3 = scoreItem(items[s2], candSlugs, null); if (sc3 > seedScore) { seedScore = sc3; seed = items[s2]; } }
+      for (var s2 = 0; s2 < items.length; s2++) { var sc3 = scoreItem(items[s2], candSlugs, info.year); if (sc3 > seedScore) { seedScore = sc3; seed = items[s2]; } }
     }
-    if (!seed || seedScore < 90) { console.log(LOG + " no season match"); return []; }
+    if (!seed || seedScore < 65) { console.log(LOG + " no season match (best=" + seedScore + ")"); return []; }
     console.log(LOG + " serie newsId=" + seed.newsId + " (" + seed.title + ")");
     var eps = await fetchSeriesEpisodes(base, seed.newsId);
     if (!eps) { console.log(LOG + " episodes API empty"); return []; }
@@ -195,16 +208,16 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
 
   if (!jobs.length) { console.log(LOG + " no player links"); return []; }
 
-  // Resolve players ONE AT A TIME and return as soon as we have streams. Nuvio's runtime
-  // (QuickJS) uses blocking, serial fetch with a 60s cap and ignores AbortController, so a
-  // single hanging embed host would otherwise wipe out already-resolved streams (all-or-
-  // nothing). The first player is the one proven reachable; return it before risking the rest.
+  // Resolve several players (sorted best-host-first, deduped by host+lang) to gather ALL
+  // qualities/languages — e.g. vidzy 480p AND uqload 1080p. Nuvio's runtime is blocking serial
+  // fetch with a 60s cap, so we bound the work: at most MAX_JOBS, and stop once we have enough.
   var streams = [];
-  for (var ji = 0; ji < jobs.length; ji++) {
+  var MAX_JOBS = 8;
+  for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
     var jb = jobs[ji];
     var g = await buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
     for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
-    if (streams.length) break;
+    if (streams.length >= 6) break;
   }
   sortStreams(streams);
   console.log(LOG + " => " + streams.length + " streams");

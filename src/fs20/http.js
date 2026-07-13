@@ -170,22 +170,41 @@ export async function liveSearch(base, query) {
   return out;
 }
 
-// ---- film detail page: /<newsid>-slug.html ----
-// Returns [{ url, lang }]  (lang: "VF" | "VOSTFR")
+// ---- film players: real DLE JSON endpoint /engine/ajax/film_api.php?id=<newsId> ----
+// Shape: { players: { <host>: { <langKey>: embedUrl } } }. Returns [{ url, hostKey, lang, variant }].
+// Falls back to scraping the HTML page (older layout) if the JSON has nothing.
 export async function fetchFilmPlayers(base, newsId) {
+  var out = [];
+  var j = await fetchJson(base + "/engine/ajax/film_api.php?id=" + newsId, { headers: { "User-Agent": USER_AGENT, "Referer": base + "/index.php?newsid=" + newsId } }, 12000);
+  if (j && j.players && typeof j.players === "object") {
+    for (var host in j.players) {
+      if (!Object.prototype.hasOwnProperty.call(j.players, host)) continue;
+      var byLang = j.players[host];
+      if (!byLang || typeof byLang !== "object") continue;
+      for (var lk in byLang) {
+        if (!Object.prototype.hasOwnProperty.call(byLang, lk)) continue;
+        var u = byLang[lk];
+        if (!u || typeof u !== "string" || u.indexOf("http") !== 0) continue;
+        var lkl = String(lk).toLowerCase();
+        var lang0 = /vostfr|vost/.test(lkl) ? "VOSTFR" : (lkl === "vo" ? "VO" : "VF");
+        var variant0 = lkl === "vff" ? "VFF" : lkl === "vfq" ? "VFQ" : lkl === "vostfr" ? "VOSTFR" : lkl === "vo" ? "VO" : lang0;
+        out.push({ url: u, hostKey: host, lang: lang0, variant: variant0 });
+      }
+    }
+  }
+  if (out.length) return out;
   var html;
   try { html = await fetchText(base + "/index.php?newsid=" + newsId, { headers: { "User-Agent": USER_AGENT, "Referer": base + "/" } }, 12000); }
-  catch (e) { return []; }
-  var out = [];
+  catch (e) { return out; }
   var re = /class="option"\s+data-url="([^"]+)"><span>([^<]*)</g;
   var m;
   while ((m = re.exec(html)) !== null) {
     var url = m[1];
     var label = m[2].toUpperCase();
     var lang = /VOSTFR|VOST/.test(label) ? "VOSTFR" : "VF";
-    // keep the precise variant word (TRUEFRENCH / FRENCH / VOSTFR) for a distinguishable label
     var vm = /(TRUEFRENCH|VF2|VFF|VFQ|FRENCH|VOSTFR|VO)/.exec(label);
-    out.push({ url: url, lang: lang, variant: vm ? vm[1] : lang });
+    var hk = /vidzy/i.test(url) ? "vidzy" : /uqload/i.test(url) ? "uqload" : /fsvid/i.test(url) ? "premium" : "generic";
+    out.push({ url: url, hostKey: hk, lang: lang, variant: vm ? vm[1] : lang });
   }
   return out;
 }
