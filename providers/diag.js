@@ -1,4 +1,5 @@
-/* diag v13 — probes the two FILM providers (fs20 + yablom) end-to-end on-device. Always ONE row. */
+/* diag v14 — "référencement" probe. Uses the REAL tmdbId Nuvio passes. Shows, for THIS title,
+   whether fs20/yablom have it (search hit) and whether the title MATCH score passes. Always ONE row. */
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
@@ -24,100 +25,82 @@ __export(diag_exports, { getStreams: () => getStreams });
 module.exports = __toCommonJS(diag_exports);
 
 var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-var VERSION = "DIAG v13 (film chains)";
+var TMDB = "439c478a771f35c05022f9feabcca01c";
+var VERSION = "DIAG v14 (referencement)";
 
 function row(msg) {
-  return {
-    name: VERSION + " | " + msg,
-    title: VERSION + " | " + msg,
+  return { name: VERSION + " | " + msg, title: VERSION + " | " + msg,
     url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-    quality: "DIAG", language: "DIAG", provider: "DIAG",
-    headers: { "User-Agent": UA }
-  };
+    quality: "DIAG", language: "DIAG", provider: "DIAG", headers: { "User-Agent": UA } };
 }
-function unpackPacked(src) {
-  var m = /\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'((?:[^'\\]|\\.)*)'\.split\('\|'\)/.exec(src);
-  if (!m) return "";
-  var p = m[1].replace(/\\'/g, "'").replace(/\\\\/g, "\\");
-  var a = parseInt(m[2], 10), c = parseInt(m[3], 10), k = m[4].split("|");
-  if (a > 62) return "";
-  try { while (c--) { if (k[c]) p = p.replace(new RegExp("\\b" + c.toString(a) + "\\b", "g"), k[c]); } }
-  catch (e) { return "TOSTRING_THREW"; }
-  return p;
+var ACCENT = {"à":"a","á":"a","â":"a","ä":"a","é":"e","è":"e","ê":"e","ë":"e","î":"i","ï":"i","ô":"o","ö":"o","û":"u","ü":"u","ç":"c","ñ":"n","œ":"oe","æ":"ae"};
+function strip(s){ try { return s.normalize("NFD").replace(/[̀-ͯ]/g,""); } catch(e){ var o=""; for(var i=0;i<s.length;i++){ var c=s.charAt(i); o+=ACCENT[c]||ACCENT[c.toLowerCase()]||c; } return o; } }
+function slug(t){ return strip(String(t).toLowerCase()).replace(/['’\\]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
+function baseSlug(t){ return slug(String(t).replace(/\s*\(\d{4}\)\s*$/,"").replace(/[-–]\s*saison\s*\d+.*$/i,"")); }
+function score(siteTitle, candSlug, tmdbYear, siteYear){
+  var s = baseSlug(siteTitle); if(!s) return -1;
+  var base = -1;
+  if (s === candSlug) base = 100;
+  else if (s.length>4 && candSlug.length>4 && (s.indexOf(candSlug)===0 || candSlug.indexOf(s)===0)) base = 55;
+  if (base<0) return -1;
+  if (tmdbYear && siteYear) base += (tmdbYear===siteYear?12:-20);
+  return base;
 }
-function findMedia(t) {
-  var m = /https?:\/\/[^\s"'\\)]+\.m3u8[^\s"'\\)]*/i.exec(t); if (m) return m[0];
-  m = /https?:\/\/[^\s"'\\)]+\.mp4[^\s"'\\)]*/i.exec(t); if (m) return m[0];
-  return null;
-}
-function status(r) { return r && typeof r.status === "number" ? r.status : "?"; }
+function tGet(url){ return fetch(url,{headers:{"User-Agent":UA}}).then(function(r){return r.text();},function(){return "";}); }
 
-// ---------------- fs20 film chain ----------------
-function checkFs20() {
-  return __async(this, null, function* () {
-    var base = "https://fs20.lol", ck = "fsschal=1";
-    try {
-      var r1 = yield fetch(base + "/engine/ajax/search.php", {
-        method: "POST",
-        headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", "Referer": base + "/", "Cookie": ck },
-        body: "query=inception&page=1"
-      });
-      var b1 = yield r1.text();
-      var items = [], re = /location\.href='\/(\d+)-[^']*'[\s\S]*?search-title'>([^<]*)</g, mm;
-      while ((mm = re.exec(b1)) !== null) items.push({ id: mm[1], title: mm[2] });
-      if (!items.length) return "fs20[search=0@" + status(r1) + " len" + b1.length + "]";
-      // first film without "saison"
-      var film = null;
-      for (var i = 0; i < items.length; i++) { if (!/saison/i.test(items[i].title)) { film = items[i]; break; } }
-      if (!film) film = items[0];
-      // film page -> players
-      var r2 = yield fetch(base + "/index.php?newsid=" + film.id, { headers: { "User-Agent": UA, "Referer": base + "/", "Cookie": ck } });
-      var b2 = yield r2.text();
-      var players = [], re2 = /class="option"\s+data-url="([^"]+)"><span>([^<]*)</g, m2;
-      while ((m2 = re2.exec(b2)) !== null) players.push(m2[1]);
-      if (!players.length) return "fs20[search=" + items.length + " film=" + film.id + " players=0@" + status(r2) + " len" + b2.length + "]";
-      // resolve first embed
-      var emb = players[0];
-      var org = (/^(https?:\/\/[^/]+)/i.exec(emb) || ["", ""])[1];
-      var r3 = yield fetch(emb, { headers: { "User-Agent": UA, "Referer": org + "/" } });
-      var b3 = yield r3.text();
-      var media = findMedia(unpackPacked(b3)) || findMedia(b3);
-      if (!media) return "fs20[search=" + items.length + " players=" + players.length + " embed@" + status(r3) + " NO-MEDIA]";
-      var r4 = yield fetch(media, { headers: { "User-Agent": UA, "Referer": org + "/" } });
-      var b4 = yield r4.text();
-      var tag = b4.indexOf("#EXT") !== -1 ? "#EXT-OK" : "NO-EXT";
-      return "fs20[OK search=" + items.length + " players=" + players.length + " CDN=" + status(r4) + "/" + tag + "]";
-    } catch (e) { return "fs20[THREW:" + (e && e.message ? e.message : e) + "]"; }
+function check(tmdbId, mediaType){
+  return __async(this,null,function*(){
+    var kind = mediaType==="tv"?"tv":"movie";
+    // TMDB titles + year
+    var titles=[], year=null, seen={};
+    var langs=["fr-FR","en-US"];
+    for(var li=0; li<langs.length; li++){
+      var t=""; try{ t = yield tGet("https://api.themoviedb.org/3/"+kind+"/"+tmdbId+"?api_key="+TMDB+"&language="+langs[li]); }catch(e){}
+      var d=null; try{ d=JSON.parse(t); }catch(e){}
+      if(!d) continue;
+      if(!year){ var rd=d.release_date||d.first_air_date||""; var ym=/^(\d{4})/.exec(rd); if(ym) year=ym[1]; }
+      var names=[d.title,d.name,d.original_title,d.original_name];
+      for(var n=0;n<names.length;n++){ if(names[n]){ var k=slug(names[n]); if(k&&!seen[k]){ seen[k]=1; titles.push(names[n]); } } }
+    }
+    if(!titles.length) return "TMDB=FAIL(id="+tmdbId+" type="+mediaType+") <- Nuvio passe peut-etre un id non-TMDB";
+    var candSlugs=[]; for(var c=0;c<titles.length;c++) candSlugs.push(slug(titles[c]));
+    var head = 'TMDB="'+titles[0]+'"('+(year||"?")+")";
+
+    // fs20 search + score
+    var fs="";
+    try{
+      var body="query="+encodeURIComponent(titles[0])+"&page=1";
+      var h1 = yield fetch("https://fs20.lol/engine/ajax/search.php",{method:"POST",headers:{"User-Agent":UA,"Content-Type":"application/x-www-form-urlencoded","X-Requested-With":"XMLHttpRequest","Referer":"https://fs20.lol/","Cookie":"fsschal=1"},body:body}).then(function(r){return r.text();});
+      var items=[], re=/location\.href='\/(\d+)-[^']*'[\s\S]*?search-title'>([^<]*)</g, m;
+      while((m=re.exec(h1))!==null){ var ti=m[2].replace(/&#0?39;/g,"'").replace(/&amp;/g,"&"); var ym=/\((\d{4})\)/.exec(ti); items.push({title:ti,year:ym?ym[1]:null}); }
+      if(!items.length) fs="fs20:ABSENT(search=0)";
+      else{
+        var best=-1,bt="";
+        for(var i=0;i<items.length;i++){ for(var cs=0;cs<candSlugs.length;cs++){ var sc=score(items[i].title,candSlugs[cs],year,items[i].year); if(sc>best){best=sc;bt=items[i].title;} } }
+        fs="fs20:search="+items.length+' best="'+bt+'"score='+best+(best>=90?" MATCH":" REJECTED(<90)");
+      }
+    }catch(e){ fs="fs20:THREW:"+(e&&e.message?e.message:e); }
+
+    // yablom search + score (movies only)
+    var ya="";
+    if(kind==="movie"){
+      try{
+        var yt = yield fetch("https://yablom.com/euvcw7/api_search.php?searchword="+encodeURIComponent(titles[0]),{headers:{"User-Agent":UA,"Cookie":"g=true"}}).then(function(r){return r.text();});
+        var yj=null; try{ yj=JSON.parse(yt); }catch(e){}
+        if(!yj||!yj.films) ya="yablom:api-fail";
+        else if(!yj.films.length) ya="yablom:ABSENT(search=0)";
+        else{
+          var yb=-1,ybt="";
+          for(var f=0;f<yj.films.length;f++){ var ft=String(yj.films[f].title||""); var fym=/\((\d{4})\)/.exec(ft); var fy=fym?fym[1]:null; for(var cs2=0;cs2<candSlugs.length;cs2++){ var sc2=score(ft,candSlugs[cs2],year,fy); if(sc2>yb){yb=sc2;ybt=ft;} } }
+          ya="yablom:search="+yj.films.length+' best="'+ybt+'"score='+yb+(yb>=90?" MATCH":" REJECTED(<90)");
+        }
+      }catch(e){ ya="yablom:THREW:"+(e&&e.message?e.message:e); }
+    } else ya="yablom:skip(tv)";
+
+    return head+" | "+fs+" | "+ya;
   });
 }
 
-// ---------------- yablom film chain ----------------
-function checkYablom() {
-  return __async(this, null, function* () {
-    var O = "https://yablom.com", folder = "euvcw7", ck = "g=true";
-    try {
-      var r1 = yield fetch(O + "/" + folder + "/api_search.php?searchword=inception", { headers: { "User-Agent": UA, "Cookie": ck } });
-      var b1 = yield r1.text();
-      var j = null; try { j = JSON.parse(b1); } catch (e) {}
-      if (!j || !j.films) return "yablom[folder/api NOTJSON@" + status(r1) + " len" + b1.length + "]";
-      if (!j.films.length) return "yablom[search=0]";
-      var f = j.films[0], lm = /(\d+)\s*$/.exec(String(f.link || "")), id = lm ? lm[1] : null;
-      if (!id) return "yablom[search=" + j.films.length + " no-linkId]";
-      var r2 = yield fetch(O + "/" + folder + "/b/yablom/" + id, { headers: { "User-Agent": UA, "Cookie": ck } });
-      var b2 = yield r2.text();
-      var im = /src="(https?:\/\/[a-z0-9.-]+\/iframe\/[A-Za-z0-9]+)"/i.exec(b2) || /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(b2);
-      if (!im) return "yablom[search=" + j.films.length + " detail@" + status(r2) + " NO-IFRAME len" + b2.length + "]";
-      var eh = (/^https?:\/\/([^/]+)/i.exec(im[1]) || ["", "?"])[1];
-      return "yablom[OK search=" + j.films.length + " embed@" + status(r2) + "=" + eh + "]";
-    } catch (e) { return "yablom[THREW:" + (e && e.message ? e.message : e) + "]"; }
-  });
-}
-
-function getStreams(tmdbId, mediaType, season, episode) {
-  return __async(this, null, function* () {
-    var a, b;
-    try { a = yield checkFs20(); } catch (e) { a = "fs20[CRASH]"; }
-    try { b = yield checkYablom(); } catch (e) { b = "yablom[CRASH]"; }
-    return [row(a + " || " + b)];
-  }).then(function (x) { return x; }, function (e) { return [row("CRASH " + (e && e.message ? e.message : e))]; });
+function getStreams(tmdbId, mediaType, season, episode){
+  return check(tmdbId, mediaType).then(function(msg){ return [row(msg)]; }, function(e){ return [row("CRASH "+(e&&e.message?e.message:e))]; });
 }
