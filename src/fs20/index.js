@@ -208,16 +208,20 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
 
   if (!jobs.length) { console.log(LOG + " no player links"); return []; }
 
-  // Resolve several players (sorted best-host-first, deduped by host+lang) to gather ALL
-  // qualities/languages — e.g. vidzy 480p AND uqload 1080p. Nuvio's runtime is blocking serial
-  // fetch with a 60s cap, so we bound the work: at most MAX_JOBS, and stop once we have enough.
+  // Lock onto the FIRST host that yields streams and resolve only its jobs (both languages),
+  // then stop. In Nuvio's runtime a single hanging embed host (one blocked on the user's network)
+  // can't be aborted and would wipe out everything — so never risk a second host once one works.
   var streams = [];
+  var lockedHost = null;
   var MAX_JOBS = 8;
   for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
     var jb = jobs[ji];
+    if (lockedHost && jb.hostKey !== lockedHost) break;
     var g = await buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
-    for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
-    if (streams.length >= 6) break;
+    if (g.length) {
+      lockedHost = jb.hostKey;
+      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+    }
   }
   sortStreams(streams);
   console.log(LOG + " => " + streams.length + " streams");

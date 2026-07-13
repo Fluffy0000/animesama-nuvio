@@ -700,16 +700,21 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " no player links");
       return [];
     }
-    // Resolve several players (jobs sorted best-host-first, deduped by host+lang) to gather
-    // ALL qualities/languages — e.g. vidzy 480p AND uqload 1080p. Capped to stay within
-    // Nuvio's 60s blocking-serial budget. sortStreams() puts the best quality on top.
+    // Lock onto the FIRST host that yields streams and resolve only its jobs (both languages),
+    // then stop. In Nuvio's runtime a single hanging embed host (e.g. one blocked on the user's
+    // network) can't be aborted and would wipe out everything — so we never risk a second host
+    // once one works. Hosts are sorted best-first; explodeHls still gives that host's qualities.
     var streams = [];
+    var lockedHost = null;
     var MAX_JOBS = 8;
     for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
       var jb = jobs[ji];
+      if (lockedHost && jb.hostKey !== lockedHost) break;
       var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
-      for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
-      if (streams.length >= 6) break;   // enough qualities/langs gathered; stop wasting fetches
+      if (g.length) {
+        lockedHost = jb.hostKey;
+        for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
+      }
     }
     sortStreams(streams);
     console.log(LOG + " => " + streams.length + " streams");
