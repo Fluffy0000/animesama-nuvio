@@ -80,9 +80,13 @@ export async function explodeHls(masterUrl, referer) {
 
 // Resolve any embed to { kind, masterUrl, referer } or null.
 // vidzy -> HLS ; others -> whatever direct file we can find (mp4/m3u8), best effort.
-export async function resolveHost(hostKey, embedUrl) {
+export async function resolveHost(hostKey, embedUrl, siteReferer) {
   var referer = originOf(embedUrl) + "/";
-  var r = await safeFetch(embedUrl, { headers: { "User-Agent": USER_AGENT, "Referer": referer } }, 12000);
+  // Embed pages are loaded in an iframe ON the site, so the browser sends the SITE as Referer.
+  // Hosts like fsvid/premium, voe, dood REJECT a request refered by their own origin (return a
+  // ~379-byte blank) but serve the real packed player when refered by the site. Use the site.
+  var pageReferer = siteReferer || referer;
+  var r = await safeFetch(embedUrl, { headers: { "User-Agent": USER_AGENT, "Referer": pageReferer } }, 12000);
   if (!isOk(r)) return null;
   var html; try { html = await r.text(); } catch (e) { return null; }
 

@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -69,7 +69,7 @@
       "id": "fs20",
       "name": "🎥 French Stream",
       "description": "Films & séries live-action VF/VOSTFR depuis fs20.lol (Vidzy, Uqload)",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "author": "",
       "supportedTypes": [
         "movie",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v17",
+      "name": "🔧 DIAG v18 (fs20 réel)",
       "description": "Execute le VRAI fs20 sur le film ouvert et affiche le nb de streams + meilleure qualite. Toujours 1 ligne.",
-      "version": "17.0.0",
+      "version": "18.0.0",
       "author": "",
       "supportedTypes": [
         "movie",

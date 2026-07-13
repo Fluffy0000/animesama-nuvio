@@ -61,8 +61,8 @@ var HOST_ORDER = ["vidzy", "uqload", "voe", "premium", "netu"];
 function langLabel(v) { return v === "vostfr" ? "VOSTFR" : (v === "vo" ? "VO" : "VF"); }
 function langFlag(v) { return v === "vostfr" || v === "vo" ? "🇯🇵" : "🇫🇷"; }
 
-async function buildStreams(hostKey, embedUrl, langKey, epNum, langText) {
-  var resolved = await resolveHost(hostKey, embedUrl);
+async function buildStreams(hostKey, embedUrl, langKey, epNum, langText, siteReferer) {
+  var resolved = await resolveHost(hostKey, embedUrl, siteReferer);
   if (!resolved) return [];
   var name = HOST_NAME[hostKey] || (hostKey.charAt(0).toUpperCase() + hostKey.slice(1));
   var label = langText || langLabel(langKey), flag = langFlag(langKey);
@@ -160,7 +160,7 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
     console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
     var players = await fetchFilmPlayers(base, best.newsId);
     // resolve most-reliable hosts first (we return after the first player that yields streams)
-    var prio = { vidzy: 0, uqload: 1, premium: 2, voe: 3, sibnet: 4, netu: 5 };
+    var prio = { premium: 0, vidzy: 1, uqload: 2, voe: 3, sibnet: 4, netu: 5 };
     players.sort(function (a, b) {
       var pa = prio[a.hostKey]; if (pa === undefined) pa = 9;
       var pb = prio[b.hostKey]; if (pb === undefined) pb = 9;
@@ -215,7 +215,7 @@ async function getStreamsImpl(tmdbId, mediaType, season, episode) {
   var MAX_JOBS = 8;
   for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
     var jb = jobs[ji];
-    var g = await buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
+    var g = await buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText, base + "/");
     for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
     if (streams.length) break;
   }

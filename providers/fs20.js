@@ -414,10 +414,14 @@ function explodeHls(masterUrl, referer) {
     return out;
   });
 }
-function resolveHost(hostKey, embedUrl) {
+function resolveHost(hostKey, embedUrl, siteReferer) {
   return __async(this, null, function* () {
     var referer = originOf(embedUrl) + "/";
-    var r = yield safeFetch(embedUrl, { headers: { "User-Agent": USER_AGENT, "Referer": referer } }, 12e3);
+    // Embed pages load in an iframe ON the site → the browser sends the SITE as Referer. fsvid/
+    // premium, voe, dood REJECT their own-origin referer (~379-byte blank) but serve the real
+    // packed player when refered by the site. Use the site for the page fetch.
+    var pageReferer = siteReferer || referer;
+    var r = yield safeFetch(embedUrl, { headers: { "User-Agent": USER_AGENT, "Referer": pageReferer } }, 12e3);
     if (!isOk(r)) return null;
     var html;
     try {
@@ -529,9 +533,9 @@ function langLabel(v) {
 function langFlag(v) {
   return v === "vostfr" || v === "vo" ? "\u{1F1EF}\u{1F1F5}" : "\u{1F1EB}\u{1F1F7}";
 }
-function buildStreams(hostKey, embedUrl, langKey, epNum, langText) {
+function buildStreams(hostKey, embedUrl, langKey, epNum, langText, siteReferer) {
   return __async(this, null, function* () {
-    var resolved = yield resolveHost(hostKey, embedUrl);
+    var resolved = yield resolveHost(hostKey, embedUrl, siteReferer);
     if (!resolved) return [];
     var name = HOST_NAME[hostKey] || hostKey.charAt(0).toUpperCase() + hostKey.slice(1);
     var label = langText || langLabel(langKey), flag = langFlag(langKey);
@@ -636,7 +640,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
       console.log(LOG + " film newsId=" + best.newsId + " (" + best.title + ")");
       var players = yield fetchFilmPlayers(base, best.newsId);
       // resolve most-reliable hosts first (we return after the first player that yields streams)
-      var prio = { vidzy: 0, uqload: 1, premium: 2, voe: 3, sibnet: 4, netu: 5 };
+      var prio = { premium: 0, vidzy: 1, uqload: 2, voe: 3, sibnet: 4, netu: 5 };
       players.sort(function (a, b) {
         var pa = prio[a.hostKey]; if (pa === void 0) pa = 9;
         var pb = prio[b.hostKey]; if (pb === void 0) pb = 9;
@@ -707,7 +711,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     var MAX_JOBS = 8;
     for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
       var jb = jobs[ji];
-      var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText);
+      var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText, base + "/");
       for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
       if (streams.length) break;
     }
