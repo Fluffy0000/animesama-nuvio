@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.24.0",
+  "version": "1.25.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v18 (fs20 réel)",
+      "name": "🔧 DIAG v19",
       "description": "Execute le VRAI fs20 sur le film ouvert et affiche le nb de streams + meilleure qualite. Toujours 1 ligne.",
-      "version": "18.0.0",
+      "version": "19.0.0",
       "author": "",
       "supportedTypes": [
         "movie",
