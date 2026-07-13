@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -87,9 +87,9 @@
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v11 (deploy check)",
-      "description": "Renvoie TOUJOURS 1 ligne. Montre la version + si le cookie anti-bot passe depuis ton tel.",
-      "version": "11.0.0",
+      "name": "🔧 DIAG v12 (chain probe)",
+      "description": "Renvoie TOUJOURS 1 ligne. Déroule search->API->embed vidzy->fetch CDN m3u8 et montre où ça casse sur ton tel.",
+      "version": "12.0.0",
       "author": "",
       "supportedTypes": [
         "movie",
