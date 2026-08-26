@@ -1,4 +1,4 @@
-/* vofamille/yablom - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* cinestream - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -610,157 +610,118 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- vofamille/index.js ----
-// vofamille — generic provider for the yablom-skeleton family:
-//   yablom.com, kordoz.com, ilmiv.com, kidraz.com (films only, VF/VOSTFR, sharecloudy)
-// Pipeline: resolve folder token -> /{f}/api_search.php?searchword= (Referer REQUIRED)
-//           -> /{f}/b/<tag>/<id> -> iframe (sharecloudy/ofbax) -> direct m3u8.
-// SITE config is injected at build time by build.py (see VARIANTS).
+// ---- cinestream/index.js ----
+// cinestream — provider for cinestream.info (films VF/VOSTFR)
+// Pipeline: TMDB id -> search /search?q= -> /film/<slug> (RSC: players[] + tmdbid)
+//           -> /player/<tmdbId>/<idx> -> embed iframe -> core/hosts -> direct file.
 
 
 
 
 
-
-var SITE = {"id": "yablom", "name": "Yablom", "origin": "https://yablom.com", "tag": "yablom", "folder": "euvcw7"};
-
-var PROVIDER_NAME = SITE.name;
+var ORIGIN = "https://cinestream.info";
+var MAX_PLAYERS = 12;
 
 function headers(referer) {
-  var h = { "User-Agent": CORE_UA, "Cookie": "g=true" };
+  var h = { "User-Agent": CORE_UA };
   if (referer) h["Referer"] = referer;
   return h;
 }
 
-// ---- folder token (validated by content, auto-rediscovered if it rotates) ----
-var cachedFolder = null;
-
-async function folderWorks(folder) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var r = await safeFetch(home, { headers: headers(null) }, 9000);
-  if (!netIsOk(r)) return false;
-  try {
-    var html = await r.text();
-    return html && html.length > 40000; // the real home page is a fat film catalogue
-  } catch (e) { return false; }
-}
-
-async function resolveFolder() {
-  if (cachedFolder) return cachedFolder;
-  if (await folderWorks(SITE.folder)) { cachedFolder = SITE.folder; return cachedFolder; }
-  try {
-    var html = await fetchText(SITE.origin + "/", { headers: headers(null) }, 9000);
-    if (html) {
-      var seen = {}, cands = [], re = /href="\/?([a-zA-Z0-9]{4,14})"/g, m;
-      while ((m = re.exec(html)) !== null) {
-        var tok = m[1];
-        if (!seen[tok]) { seen[tok] = true; cands.push(tok); }
-      }
-      for (var i = 0; i < cands.length; i++) {
-        if (await folderWorks(cands[i])) { cachedFolder = cands[i]; return cachedFolder; }
-      }
-    }
-  } catch (e) {}
-  cachedFolder = SITE.folder;
-  return cachedFolder;
-}
-
-// ---- search (Referer to the folder home is MANDATORY — without it: 0 films) ----
-async function searchFilms(folder, query) {
-  var url = SITE.origin + "/" + folder + "/api_search.php?searchword=" + encodeURIComponent(query);
-  var j = await fetchJson(url, { headers: headers(SITE.origin + "/" + folder + "/home/" + SITE.tag) }, 9000);
-  if (!j || !j.films) return [];
-  var out = [];
-  for (var i = 0; i < j.films.length; i++) {
-    var f = j.films[i];
-    if (!f) continue;
-    // JSON `link` uses a stale folder/tag (/ALBRAD/b/localhost/<id>); only trailing id is real
-    var linkId = "";
-    if (f.link) { var lm = /(\d+)\s*$/.exec(String(f.link)); if (lm) linkId = lm[1]; }
-    if (!linkId && f.id) linkId = String(f.id);
-    if (!linkId) continue;
-    var ym = /\((\d{4})\)/.exec(String(f.title || ""));
-    out.push({ id: linkId, title: String(f.title || ""), vostfr: !!f.vostfr, year: ym ? ym[1] : null });
+// /film/<slug> links from a search page (server-rendered, deduped)
+function filmLinks(html) {
+  var out = [], seen = {}, m;
+  var re = /href="\/(film\/[a-z0-9-]+)"/gi;
+  while ((m = re.exec(html)) !== null) {
+    if (!seen[m[1]]) { seen[m[1]] = true; out.push(m[1]); }
   }
   return out;
 }
 
-// strip trailing "(YYYY)" then slug
-function siteSlug(title) {
-  return slugify(String(title).replace(/\s*\(\d{4}\)\s*$/, ""));
-}
-
-function scoreFilm(film, candSlugs, tmdbYear) {
-  var s = siteSlug(film.title);
-  if (!s) return -1;
-  var best = -1;
-  for (var i = 0; i < candSlugs.length; i++) {
-    var c = candSlugs[i];
-    if (!c) continue;
-    var base = -1;
-    if (s === c) base = 100;
-    else if (s.length > 4 && c.length > 4 && (s.indexOf(c) === 0 || c.indexOf(s) === 0)) base = 55;
-    if (base < 0) continue;
-    if (tmdbYear && film.year) base += (tmdbYear === film.year ? 15 : -25);
-    if (base > best) best = base;
+// escape-tolerant regex over the RSC payload ("tmdbid\":872585, \"players\":[{\"name\":\"Voe\"}...])
+function parseDetail(html) {
+  var idm = /tmdbid\\*"?\s*:\s*(\d+)/.exec(html);
+  var tmdb = idm ? parseInt(idm[1], 10) : null;
+  var names = [];
+  var pm = /players\\*"?\s*:\s*\[([^\]]*)\]/.exec(html);
+  if (pm) {
+    var re = /name\\*"?\s*:\s*\\*"([^"\\]+)\\*"/g, m;
+    while ((m = re.exec(pm[1])) !== null) names.push(m[1]);
   }
-  return best;
+  return { tmdb: tmdb, players: names };
 }
 
-async function fetchEmbedUrl(folder, linkId) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var html = await fetchText(SITE.origin + "/" + folder + "/b/" + SITE.tag + "/" + linkId,
-                             { headers: headers(home) }, 10000);
+// iframe embed of a /player/<id>/<idx> page
+async function playerEmbed(tmdbId, idx, referer) {
+  var html = await fetchText(ORIGIN + "/player/" + tmdbId + "/" + idx, { headers: headers(referer) }, 9000);
   if (!html) return null;
-  var m = /src="(https?:\/\/[a-z0-9.-]+\/iframe\/[A-Za-z0-9]+)"/i.exec(html);
-  if (m) return m[1];
-  var g = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
-  return g ? g[1] : null;
+  var m = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
+  if (m && m[1].indexOf("googletagmanager") === -1) return m[1];
+  return null;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    if (mediaType === "tv" || mediaType === "anime") return []; // films-only catalogue
+    if (mediaType !== "movie") return []; // cinestream.info = films only
+
     var info = await getTmdbInfo(tmdbId, mediaType);
     if (!info.titles.length) return [];
-    var candSlugs = info.titles.map(slugify);
 
-    var folder = await resolveFolder();
+    // find the film page, CONFIRM identity via RSC tmdbid
     var queries = buildQueries(info.titles);
-    var byId = {}, done = false;
-    for (var i = 0; i < queries.length && !done; i++) {
-      var films = await searchFilms(folder, queries[i]);
-      for (var j = 0; j < films.length; j++) {
-        var f = films[j];
-        if (!byId[f.id]) byId[f.id] = f;
-        if (scoreFilm(f, candSlugs, info.year) >= 100) done = true;
+    var detailPath = null, playerNames = null;
+    outer:
+    for (var i = 0; i < queries.length; i++) {
+      var sh = await fetchText(ORIGIN + "/search?q=" + encodeURIComponent(queries[i]), { headers: headers(ORIGIN + "/") }, 9000);
+      if (!sh) continue;
+      var links = filmLinks(sh);
+      for (var j = 0; j < Math.min(links.length, 6); j++) {
+        var dh = await fetchText(ORIGIN + "/" + links[j], { headers: headers(ORIGIN + "/") }, 9000);
+        if (!dh) continue;
+        var d = parseDetail(dh);
+        if (d.tmdb === tmdbId) { detailPath = links[j]; playerNames = d.players; break outer; }
       }
     }
-    var best = null, bestScore = -1;
-    for (var id in byId) {
-      if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
-      var sc = scoreFilm(byId[id], candSlugs, info.year);
-      if (sc > bestScore) { bestScore = sc; best = byId[id]; }
+    if (!detailPath) return [];
+
+    var detailUrl = ORIGIN + "/" + detailPath;
+    var count = playerNames && playerNames.length ? Math.min(playerNames.length, MAX_PLAYERS) : MAX_PLAYERS;
+
+    // 1) probe all /player/<id>/<idx> pages in parallel (bounded), keep order
+    var indices = [];
+    for (var n = 0; n < count; n++) indices.push(n);
+    var embeds = await mapLimit(indices, 4, function (idx) {
+      return playerEmbed(tmdbId, idx, detailUrl);
+    });
+
+    // 2) resolve embeds in parallel (bounded), build streams in site order
+    var jobs = [];
+    for (var k = 0; k < embeds.length; k++) {
+      if (embeds[k]) jobs.push({ idx: k, embed: embeds[k] });
     }
-    if (!best || bestScore < 65) return [];
+    var resolved = await mapLimit(jobs, 3, function (job) {
+      return resolveEmbed(job.embed, { referer: detailUrl });
+    });
 
-    var embed = await fetchEmbedUrl(folder, best.id);
-    if (!embed) return [];
-    var res = await resolveEmbed(embed, { referer: SITE.origin + "/" });
-    if (!res || !res.url) return [];
-
-    var lang = best.vostfr ? "VOSTFR" : "VF";
-    var flag = best.vostfr ? "🇯🇵" : "🇫🇷";
-    var kind = /\.m3u8/i.test(res.url) ? "HLS" : "MP4";
-    return [{
-      name: flag + " " + PROVIDER_NAME + " · " + res.name + " · " + lang + " · " + kind,
-      title: best.title.replace(/^\u200e/, "") + " · " + lang,
-      url: res.url,
-      quality: "auto",
-      language: lang,
-      provider: PROVIDER_NAME,
-      headers: streamHeaders(res.referer)
-    }];
+    var streams = [];
+    for (var t = 0; t < jobs.length; t++) {
+      var res = resolved[t];
+      if (!res || !res.url) continue;
+      var pname = (playerNames && playerNames[jobs[t].idx]) || res.name;
+      var lang = /vostfr/i.test(pname) ? "VOSTFR" : "VF";
+      var flag = lang === "VOSTFR" ? "🇯🇵" : "🇫🇷";
+      var kind = /\.m3u8/i.test(res.url) ? "HLS" : "MP4";
+      streams.push({
+        name: flag + " CineStream · " + res.name + " · " + lang + " · " + kind,
+        title: info.titles[0] + " · " + pname + " · " + lang,
+        url: res.url,
+        quality: "auto",
+        language: lang,
+        provider: "CineStream",
+        headers: streamHeaders(res.referer)
+      });
+    }
+    return streams;
   } catch (e) {
     return [];
   }

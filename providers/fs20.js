@@ -346,6 +346,61 @@ function originOf(url) {
   var m = /^(https?:\/\/[^/]+)/i.exec(url);
   return m ? m[1] : "";
 }
+function hostOf(url) {
+  var m = /^https?:\/\/([^/]+)/i.exec(url);
+  return m ? m[1].toLowerCase() : "";
+}
+var B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+// atob pur JS (QuickJS/Hermes n'ont pas atob)
+function b64Decode(input) {
+  var str = String(input).replace(/=+$/, "");
+  var output = "";
+  if (str.length % 4 === 1) return "";
+  for (var bc = 0, bs = 0, buffer, i = 0; buffer = str.charAt(i++); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0) {
+    buffer = B64_CHARS.indexOf(buffer);
+  }
+  return output;
+}
+// fsvid.lol / vidzy.cc anti-scrape : src = (function(s){ ... })( "BASE64" )
+// url réelle = xor( reverse(atob(s)), (0x3d + i*89 + checksum(location.hostname)) & 255 ).
+// Le .m3u8 en clair dans la page (var _fsvHls = ".../troll/master.m3u8") est un LEURRE :
+// un clip logo de 18s, pas le film. Un regex "premier m3u8 venu" tombe dedans.
+function decodeHostCipher(text, embedHost) {
+  var m = /\}\s*\)\s*\(\s*"([A-Za-z0-9+/=]{50,})"\s*\)/.exec(text);
+  if (!m) return null;
+  var b = b64Decode(m[1]);
+  if (!b) return null;
+  var a = b.split("").reverse().join("");
+  var H = 0;
+  for (var j = 0; j < embedHost.length; j++) H = (H + embedHost.charCodeAt(j)) & 255;
+  var r = "";
+  for (var i = 0; i < a.length; i++) r += String.fromCharCode(a.charCodeAt(i) ^ ((0x3d + i * 89 + H) & 255));
+  return /^https?:\/\//.test(r) ? r : null;
+}
+function isCipherHost(url) {
+  return /fsvid|vidzy/i.test(url);
+}
+// Quand le host n'a pas la vidéo il sert un VOD court (clip d'intro ~18s). Une vraie
+// master playlist a des variantes (EXT-X-STREAM-INF); une media playlist VOD courte = leurre.
+function playlistLooksReal(url) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(url, { headers: { "User-Agent": USER_AGENT } }, 12e3);
+    if (!isOk(r)) return true;
+    var t;
+    try {
+      t = yield r.text();
+    } catch (e) {
+      return true;
+    }
+    if (t.indexOf("#EXTM3U") < 0) return true;
+    if (t.indexOf("#EXT-X-STREAM-INF") >= 0) return true;
+    if (t.indexOf("#EXT-X-ENDLIST") < 0) return true;
+    var mm = t.match(/#EXTINF:[\d.]+/g) || [];
+    var sum = 0;
+    for (var i = 0; i < mm.length; i++) sum += parseFloat(mm[i].split(":")[1]) || 0;
+    return sum >= 240;
+  });
+}
 function resolveRelative(base, rel) {
   if (/^https?:\/\//i.test(rel)) return rel;
   if (rel.indexOf("//") === 0) return "https:" + rel;
@@ -373,7 +428,9 @@ function heightToLabel(h) {
 }
 function explodeHls(masterUrl, referer) {
   return __async(this, null, function* () {
-    var r = yield safeFetch(masterUrl, { headers: { "User-Agent": USER_AGENT, "Referer": referer } }, 12e3);
+    var getHeaders = { "User-Agent": USER_AGENT };
+    if (referer) getHeaders["Referer"] = referer;
+    var r = yield safeFetch(masterUrl, { headers: getHeaders }, 12e3);
     if (!isOk(r)) return [];
     var text;
     try {
@@ -424,7 +481,16 @@ function resolveHost(hostKey, embedUrl, siteReferer) {
       return null;
     }
     var unpacked = unpackPacked(html);
-    var media = findVideoUrl(unpacked) || findVideoUrl(html);
+    var media = null;
+    // Famille fsvid/vidzy : le vrai lien est chiffré (cipher hostname-xor). Le .m3u8 en
+    // clair dans la page est systématiquement le leurre /troll/. Leur CDN répond 200 SANS
+    // Referer mais 403 avec certains Referer -> on stream sans Referer.
+    var cipherHost = isCipherHost(embedUrl);
+    if (cipherHost) {
+      media = decodeHostCipher(unpacked || html, hostOf(embedUrl)) || decodeHostCipher(html, hostOf(embedUrl));
+      if (media) referer = "";
+    }
+    if (!media) media = findVideoUrl(unpacked) || findVideoUrl(html);
     if (!media) {
       var fm = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
       if (fm) {
@@ -440,13 +506,20 @@ function resolveHost(hostKey, embedUrl, siteReferer) {
       }
     }
     if (!media) return null;
+    if (/\/troll\//i.test(media)) return null;
+    if (cipherHost && /\.m3u8/i.test(media)) {
+      var looksReal = yield playlistLooksReal(media);
+      if (!looksReal) return null;
+    }
     var kind = /\.m3u8/i.test(media) ? "hls" : "mp4";
     return { kind, masterUrl: media, referer };
   });
 }
 function mp4Alive(url, referer) {
   return __async(this, null, function* () {
-    var r = yield safeFetch(url, { method: "GET", headers: { "User-Agent": USER_AGENT, "Referer": referer, "Range": "bytes=0-1" } }, 9e3);
+    var mp4Headers = { "User-Agent": USER_AGENT, "Range": "bytes=0-1" };
+    if (referer) mp4Headers["Referer"] = referer;
+    var r = yield safeFetch(url, { method: "GET", headers: mp4Headers }, 9e3);
     if (!r) return true;
     if (r.status === 403 || r.status === 404 || r.status === 410 || r.status >= 500) return false;
     return true;
@@ -533,6 +606,8 @@ function buildStreams(hostKey, embedUrl, langKey, epNum, langText, siteReferer) 
     if (!resolved) return [];
     var name = HOST_NAME[hostKey] || hostKey.charAt(0).toUpperCase() + hostKey.slice(1);
     var label = langText || langLabel(langKey), flag = langFlag(langKey);
+    var streamHeaders = { "User-Agent": USER_AGENT };
+    if (resolved.referer) streamHeaders["Referer"] = resolved.referer;
     if (resolved.kind === "hls") {
       var variants = yield explodeHls(resolved.masterUrl, resolved.referer);
       if (!variants.length) return [];
@@ -548,7 +623,7 @@ function buildStreams(hostKey, embedUrl, langKey, epNum, langText, siteReferer) 
           quality: v.quality || "HD",
           language: label,
           provider: name,
-          headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+          headers: streamHeaders,
           _sort: { lang: langKey, height: v.height || 0, host: name }
         };
       });
@@ -562,7 +637,7 @@ function buildStreams(hostKey, embedUrl, langKey, epNum, langText, siteReferer) 
       quality: "HD",
       language: label,
       provider: name,
-      headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+      headers: streamHeaders,
       _sort: { lang: langKey, height: 1, host: name }
     }];
   });

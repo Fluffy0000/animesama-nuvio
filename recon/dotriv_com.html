@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>dotriv devient motomaz.com</title>
+<meta name="description" content="dotriv a changé de nom et devient motomaz.com. Retrouvez la même plateforme à sa nouvelle adresse.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://dotriv.com/">
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="http://dotriv.com/">
+<meta property="og:title" content="dotriv devient motomaz.com">
+<meta property="og:description" content="dotriv a changé de nom. Découvrez motomaz.com.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="dotriv devient motomaz.com">
+<meta name="twitter:description" content="dotriv a changé de nom. Découvrez motomaz.com.">
+
+<style>
+  :root{
+    --bg:#0b0b0b;
+    --ink:#f5f4f2;
+    --mut:#8f8f8f;
+    --jaune:#ffd60a;
+    --jaune-clair:#ffe24d;
+    --ko:"Helvetica Neue",Helvetica,Arial,"Liberation Sans",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ko);line-height:1.5;
+       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;}
+
+  .sky{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+       background:linear-gradient(180deg,#0e1424 0%,rgba(11,11,11,0) 58%);}
+  .aurore{position:absolute;top:-14vh;height:52vh;pointer-events:none;opacity:0;
+          background:radial-gradient(52% 88% at 32% 24%,rgba(74,255,178,.15),transparent 70%),
+                     radial-gradient(46% 80% at 68% 32%,rgba(148,118,255,.11),transparent 72%);
+          filter:blur(28px);transform:skewX(-8deg);animation:aurore 14s ease-in-out forwards;}
+  @keyframes aurore{0%{opacity:0;}28%{opacity:1;}55%{opacity:.55;}78%{opacity:.85;}100%{opacity:0;}}
+  .flash{position:fixed;inset:0;z-index:1;opacity:0;pointer-events:none;
+         background:radial-gradient(130% 90% at 50% -10%, rgba(214,228,255,1), rgba(180,200,255,.55) 38%, transparent 72%);}
+  .star{position:absolute;background:#fff;border-radius:50%;}
+  @keyframes twinkle{0%,100%{opacity:var(--o,.4);}50%{opacity:calc(var(--o,.4)*.25);}}
+  .shoot{position:absolute;}
+  .shoot i{display:block;width:170px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.95));box-shadow:0 0 6px rgba(255,255,255,.55);transform:translateX(-190px) scaleX(.6);opacity:0;animation:shoot 1.2s cubic-bezier(.4,0,.2,1) forwards;}
+  @keyframes shoot{0%{transform:translateX(-190px) scaleX(.6);opacity:0;}12%{opacity:1;}100%{transform:translateX(62vw) scaleX(1);opacity:0;}}
+  .sat{position:absolute;left:-3vw;width:2px;height:2px;border-radius:50%;background:#dff;box-shadow:0 0 4px 1px rgba(150,200,255,.7);opacity:.85;animation-name:cross;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cross{from{transform:translateX(0);}to{transform:translateX(108vw);}}
+  .drone{position:absolute;left:-4vw;width:9px;height:3px;animation-name:cross;animation-timing-function:linear;animation-fill-mode:forwards;}
+  .drone i{position:absolute;top:0;width:2px;height:2px;border-radius:50%;}
+  .drone .r{left:0;background:#ff4d4d;box-shadow:0 0 5px 1px rgba(255,70,70,.85);animation:blink 1.3s steps(1,end) infinite;}
+  .drone .g{left:7px;background:#48ff9b;box-shadow:0 0 5px 1px rgba(70,255,150,.85);animation:blink 1.3s steps(1,end) infinite .65s;}
+  @keyframes blink{0%,55%{opacity:1;}56%,100%{opacity:.05;}}
+  .bolt{position:fixed;inset:0;z-index:1;width:100%;height:100%;pointer-events:none;opacity:0;animation:boltflash .42s ease forwards;}
+  .bolt polyline{fill:none;stroke:rgba(222,233,255,.92);stroke-width:1;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 4px rgba(200,220,255,.85));}
+  @keyframes boltflash{0%{opacity:0;}8%{opacity:1;}22%{opacity:.15;}32%{opacity:.85;}100%{opacity:0;}}
+
+  .page{position:relative;z-index:2;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;text-align:center;
+        padding:clamp(28px,6vw,72px);}
+
+  .kicker{margin:0 0 clamp(18px,4vh,38px);font-size:clamp(11px,1.4vw,13px);
+          letter-spacing:.34em;text-transform:uppercase;color:var(--mut);font-weight:700;
+          opacity:0;transform:translateY(14px);animation:kickIn .8s cubic-bezier(.2,.7,.2,1) .15s forwards;}
+  .kicker s{text-decoration-thickness:1px;}
+
+  h1{margin:0;font-weight:800;font-size:clamp(37px,12.42vw,199px);line-height:.9;
+     letter-spacing:-.045em;white-space:nowrap;position:relative;
+     opacity:0;transform:translateY(48px) scale(.9);
+     animation:nameIn 1.2s cubic-bezier(.2,.75,.2,1) .35s forwards;}
+
+  .nom{background:none;border:0;margin:0;padding:0 0 .06em;cursor:pointer;
+       font:inherit;letter-spacing:inherit;color:var(--ink);
+       position:relative;display:inline-block;-webkit-tap-highlight-color:transparent;}
+  .nom::after{content:"";position:absolute;left:0;right:0;bottom:0;height:.045em;background:var(--ink);
+              transform:scaleX(0);transform-origin:left center;
+              transition:transform .35s cubic-bezier(.2,.7,.2,1);}
+  .nom:hover::after,
+  .nom:focus-visible::after{transform:scaleX(1);}
+  .nom:focus-visible{outline:3px solid var(--ink);outline-offset:.1em;}
+  .nom-copy{width:.16em;height:.16em;vertical-align:.5em;margin-left:.07em;
+            color:var(--mut);transition:color .2s ease;}
+  .nom:hover .nom-copy,.nom:focus-visible .nom-copy{color:var(--ink);}
+  .toast{position:fixed;left:50%;bottom:clamp(26px,6vh,52px);transform:translate(-50%,14px);z-index:40;
+         display:flex;align-items:center;gap:9px;max-width:88vw;
+         background:#161616;border:1px solid #2c2c2c;border-radius:12px;padding:11px 18px;
+         font-size:13.5px;letter-spacing:.02em;line-height:1.4;color:var(--ink);white-space:nowrap;
+         box-shadow:0 10px 34px rgba(0,0,0,.5);
+         opacity:0;pointer-events:none;
+         transition:opacity .25s ease,transform .3s cubic-bezier(.2,.7,.2,1);}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .toast svg{width:15px;height:15px;color:var(--jaune);flex-shrink:0;}
+  .toast span{overflow:hidden;text-overflow:ellipsis;}
+
+  .share-zone{position:relative;display:inline-block;margin-top:clamp(24px,4.5vh,44px);
+              opacity:0;animation:kickIn .8s cubic-bezier(.2,.7,.2,1) .7s forwards;}
+  .share{display:inline-flex;align-items:center;justify-content:center;max-width:100%;margin:0;
+         background:none;border:1px solid rgba(255,214,10,.5);border-radius:999px;
+         min-height:44px;padding:11px 26px;cursor:pointer;
+         font-family:inherit;font-size:clamp(14px,1.6vw,15px);font-weight:700;line-height:1.2;color:var(--jaune);
+         -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+         transition:color .2s ease,border-color .2s ease,background-color .2s ease,transform .16s ease;
+         animation:pouls 1s ease 3.1s 1;}
+  .share:hover,.share:focus-visible{color:var(--jaune-clair);border-color:var(--jaune-clair);background:rgba(255,214,10,.07);
+                                    transform:translateY(-1px);}
+  .share:active{transform:translateY(0) scale(.965);}
+  @keyframes pouls{0%{box-shadow:0 0 0 0 rgba(255,214,10,0);}
+                   40%{box-shadow:0 0 0 8px rgba(255,214,10,.13),0 0 26px 6px rgba(255,214,10,.16);}
+                   100%{box-shadow:0 0 0 0 rgba(255,214,10,0);}}
+  @media (max-width:560px){
+    .share-zone{max-width:100%;}
+    .share{width:100%;max-width:340px;min-height:48px;padding:13px 16px;font-size:14px;}
+    .share-ic{width:17px;height:17px;}
+  }
+  @media (max-width:360px){
+    .share{max-width:280px;font-size:14px;padding:12px 14px;}
+    .share-ic{width:16px;height:16px;}
+  }
+  .share:focus-visible{outline:3px solid var(--ink);outline-offset:6px;border-radius:6px;}
+  .share-ic{width:1.05em;height:1.05em;flex-shrink:0;margin-right:.55em;
+            animation:hop 7s ease-in-out 4.5s infinite;}
+  @keyframes hop{0%,86%,100%{transform:translateY(0);}
+                 90%{transform:translateY(-3px);}
+                 94%{transform:translateY(1px);}
+                 97%{transform:translateY(-1px);}}
+  .share-txt{text-wrap:balance;}
+  .share-feedback{display:block;min-height:1.1em;margin-top:.85em;
+                  font-size:.82em;letter-spacing:.03em;color:var(--ink);
+                  opacity:0;transition:opacity .2s ease;}
+  .share-feedback.show{opacity:1;}
+
+  .share-menu{position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);
+              display:flex;gap:4px;z-index:20;
+              background:#141414;border:1px solid #2a2a2a;border-radius:12px;padding:6px;}
+  .share-menu[hidden]{display:none;}
+  .share-opt{display:inline-flex;align-items:center;justify-content:center;
+             width:44px;height:44px;background:none;border:0;cursor:pointer;
+             color:var(--mut);text-decoration:none;border-radius:9px;
+             transition:background-color .15s ease,color .15s ease;}
+  .share-opt:hover,.share-opt:focus-visible{background:#1f1f1f;color:var(--ink);outline:none;}
+  .share-opt svg{width:22px;height:22px;display:block;}
+  @media (max-width:380px){
+    .share-menu{flex-wrap:wrap;justify-content:center;width:202px;}
+  }
+
+
+  @keyframes kickIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes nameIn{
+    0%{opacity:0;transform:translateY(48px) scale(.9);letter-spacing:.12em;}
+    100%{opacity:1;transform:translateY(0) scale(1);letter-spacing:-.045em;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .page *{transition:none!important;}
+    .sky *{animation:none!important;}
+    .kicker{opacity:0;transform:none!important;animation:softFade .5s ease .1s forwards!important;}
+    h1{opacity:0;transform:none!important;animation:softFade .7s ease .25s forwards!important;}
+    .share-zone{opacity:0;transform:none!important;animation:softFade .6s ease .55s forwards!important;}
+    .share,.share-ic{animation:none!important;transform:none!important;}
+    .toast{transform:translate(-50%,0);transition:opacity .25s ease!important;}
+  }
+  @keyframes softFade{from{opacity:0;}to{opacity:1;}}
+</style>
+</head>
+<body>
+<div class="sky" id="sky"></div>
+<div class="flash" id="flash"></div>
+<main class="page">
+  <p class="kicker"><s>DOTRIV</s>&nbsp;&nbsp;devient</p>
+  <h1><button type="button" class="nom" aria-label="Copier le lien motomaz.com">motomaz.com<svg class="nom-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></h1>
+  <div class="share-zone">
+    <button type="button" class="share" aria-haspopup="true" aria-expanded="false" aria-label="Partager le nouveau nom miwav.com à vos proches"><svg class="share-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M12 16V3"/><path d="M8 7l4-4 4 4"/></svg><span class="share-txt">Partager le nouveau nom à vos proches</span></button>
+    <div class="share-menu" hidden>
+      <a class="share-opt" href="https://wa.me/?text=motomaz.com%2C%20regardez%20vos%20films%20gratuitement%2C%20sans%20pub%20et%20en%20illimit%C3%A9.%20https%3A%2F%2Fmotomaz.com" target="_blank" rel="noopener" aria-label="Partager sur WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.334.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.94-5.335 11.943-11.893a11.821 11.821 0 00-3.416-8.452z"/></svg></a>
+      <a class="share-opt" href="https://t.me/share/url?url=https%3A%2F%2Fmotomaz.com&amp;text=motomaz.com%2C%20regardez%20vos%20films%20gratuitement%2C%20sans%20pub%20et%20en%20illimit%C3%A9." target="_blank" rel="noopener" aria-label="Partager sur Telegram"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+      <button class="share-opt" type="button" id="shareDiscord" aria-label="Partager sur Discord (copie le message)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></button>
+      <button class="share-opt" type="button" id="shareSnap" aria-label="Partager sur Snapchat (copie le message)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.39.839-1.213 1.168-.089.029-.209.075-.344.119-.45.135-1.139.36-1.333.81-.09.225-.061.524.12.868l.015.015c.06.121 1.526 2.795 4.097 3.219.195.029.345.225.33.42 0 .045-.015.09-.03.135-.165.39-.84.674-2.073.875-.18.029-.345.074-.39.27-.06.12-.135.435-.21.78-.105.405-.18.78-.33.93-.165.15-.45.165-.795.165-.27 0-.555-.03-.93-.105-.39-.075-.795-.15-1.305-.15-.27 0-.555.015-.84.06-.555.09-.991.404-1.5.764-.69.494-1.469 1.034-2.838 1.034-.06 0-.105-.015-.165-.015h-.135c-1.369 0-2.148-.54-2.838-1.034-.51-.36-.945-.674-1.5-.764-.285-.045-.57-.06-.84-.06-.51 0-.915.09-1.305.15-.375.06-.66.105-.93.105-.345 0-.63-.015-.795-.18-.15-.15-.225-.51-.33-.93-.075-.345-.15-.66-.21-.78-.06-.18-.225-.225-.39-.27-1.234-.196-1.909-.48-2.073-.885-.015-.045-.03-.09-.03-.135-.015-.195.135-.39.33-.42 2.572-.424 4.038-3.098 4.098-3.219l.015-.03c.18-.345.21-.644.12-.869-.194-.434-.884-.66-1.333-.81-.135-.044-.255-.074-.345-.119-1.124-.434-1.214-.899-1.184-1.139.045-.36.435-.629.825-.629.12 0 .225.015.315.06.42.196.795.301 1.124.301.255 0 .42-.061.51-.105l-.015-.045c-.03-.255-.045-.524-.075-.795l-.003-.06c-.104-1.628-.23-3.654.299-4.847C7.84 1.069 11.197.793 12.187.793h.019z"/></svg></button>
+      <button class="share-opt" type="button" id="shareTiktok" aria-label="Partager sur TikTok (copie le message)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></button>
+      <a class="share-opt" href="/cdn-cgi/l/email-protection#4f703c3a2d252a2c3b7222203b20222e35612c2022692e223f742d202b367222203b20222e35612c20226a7d0c6a7d7f3d2a282e3d2b2a356a7d7f39203c6a7d7f292623223c6a7d7f283d2e3b3a263b2a222a213b6a7d0c6a7d7f3c2e213c6a7d7f3f3a2d6a7d7f2a3b6a7d7f2a216a7d7f2623232622263b6a0c7c6a0e76616a7d7f273b3b3f3c6a7c0e6a7d096a7d0922203b20222e35612c2022" aria-label="Partager par e-mail"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></a>
+      <button class="share-opt" type="button" id="shareCopy" aria-label="Copier le lien"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></button>
+    </div>
+  </div>
+  <span class="share-feedback" role="status" aria-live="polite"></span>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span></span></div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+(function () {
+  var btn = document.querySelector('.share');
+  var menu = document.querySelector('.share-menu');
+  var fb = document.querySelector('.share-feedback');
+  var copyBtn = document.getElementById('shareCopy');
+  if (!btn) return;
+  var data = { title: "motomaz.com", text: "motomaz.com, regardez vos films gratuitement, sans pub et en illimité.", url: "https:\/\/motomaz.com" };
+
+  function flash(msg) {
+    if (!fb) return;
+    fb.textContent = msg;
+    fb.classList.add('show');
+    clearTimeout(btn._t);
+    btn._t = setTimeout(function () { fb.classList.remove('show'); }, 2200);
+  }
+  function openMenu() {
+    if (!menu) return;
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    var first = menu.querySelector('.share-opt');
+    if (first) first.focus();
+  }
+  function closeMenu(focusBtn) {
+    if (!menu) return;
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (focusBtn) btn.focus();
+  }
+
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (menu) { menu.hidden ? openMenu() : closeMenu(); }
+  });
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      var ok = function () { flash('Lien copié : ' + data.url); closeMenu(false); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(data.url).then(ok).catch(function () { flash(data.url); closeMenu(false); });
+      } else { flash(data.url); closeMenu(false); }
+    });
+  }
+  [
+    { id: 'shareDiscord', name: 'Discord' },
+    { id: 'shareSnap', name: 'Snapchat' },
+    { id: 'shareTiktok', name: 'TikTok' }
+  ].forEach(function (t) {
+    var el = document.getElementById(t.id);
+    if (!el) return;
+    el.addEventListener('click', function () {
+      var msg = data.text + ' ' + data.url;
+      var done = function () { flash('Message copié — collez-le dans ' + t.name); closeMenu(false); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).then(done).catch(function () { flash(msg); closeMenu(false); });
+      } else { flash(msg); closeMenu(false); }
+    });
+  });
+  if (menu) {
+    menu.addEventListener('click', function (e) { if (e.target.tagName === 'A') closeMenu(false); });
+  }
+  document.addEventListener('click', function (e) {
+    if (menu && !menu.hidden && !menu.contains(e.target) && e.target !== btn) closeMenu(false);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(true); });
+
+  var nom = document.querySelector('.nom');
+  var toast = document.getElementById('toast');
+  var toastTxt = toast ? toast.querySelector('span') : null;
+  function showToast(m) {
+    if (!toast) { flash(m); return; }
+    if (toastTxt) toastTxt.textContent = m;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+  }
+  if (nom) {
+    nom.addEventListener('click', function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(data.url).then(function () { showToast('Lien copié'); }).catch(function () { showToast(data.url); });
+      } else { showToast(data.url); }
+    });
+  }
+})();
+</script>
+<script>
+(function () {
+  var sky = document.getElementById('sky');
+  var flash = document.getElementById('flash');
+  if (!sky) return;
+  var cfg = { stars: 46, delay: [9000, 20000], weights: { shoot: 5, lightning: 3, sat: 3, drone: 2, aurore: 2 }, intensity: 0.13, bolt: true };
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function pick(w) { var t = 0, k; for (k in w) t += w[k]; var r = Math.random() * t; for (k in w) { r -= w[k]; if (r <= 0) return k; } return 'shoot'; }
+  function stars(n) {
+    var f = document.createDocumentFragment();
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('div'); s.className = 'star';
+      var sz = rand(1, 2.2).toFixed(2); s.style.width = sz + 'px'; s.style.height = sz + 'px';
+      s.style.left = rand(0, 100).toFixed(2) + 'vw'; s.style.top = rand(0, 100).toFixed(2) + 'vh';
+      if (Math.random() < 0.16) { s.style.background = Math.random() < 0.5 ? '#cfe0ff' : '#ffe9c9'; }
+      var o = rand(0.12, 0.55).toFixed(2); s.style.setProperty('--o', o); s.style.opacity = o;
+      s.style.animation = 'twinkle ' + rand(2.5, 6).toFixed(2) + 's ease-in-out ' + rand(0, 5).toFixed(2) + 's infinite';
+      f.appendChild(s);
+    }
+    sky.appendChild(f);
+  }
+  function shoot() { var w = document.createElement('div'); w.className = 'shoot'; w.style.left = rand(8, 70).toFixed(1) + 'vw'; w.style.top = rand(2, 36).toFixed(1) + 'vh'; w.style.transform = 'rotate(' + rand(18, 38).toFixed(1) + 'deg)'; w.appendChild(document.createElement('i')); sky.appendChild(w); setTimeout(function () { w.remove(); }, 1300); }
+  function satellite() { var s = document.createElement('div'); s.className = 'sat'; s.style.top = rand(4, 70).toFixed(1) + 'vh'; s.style.animationDuration = rand(9, 16).toFixed(1) + 's'; sky.appendChild(s); setTimeout(function () { s.remove(); }, 17000); }
+  function drone() { var d = document.createElement('div'); d.className = 'drone'; d.style.top = rand(6, 72).toFixed(1) + 'vh'; d.style.animationDuration = rand(13, 22).toFixed(1) + 's'; d.innerHTML = '<i class="r"></i><i class="g"></i>'; sky.appendChild(d); setTimeout(function () { d.remove(); }, 23000); }
+  function aurore() { var a = document.createElement('div'); a.className = 'aurore'; a.style.left = rand(2, 34).toFixed(1) + 'vw'; a.style.width = rand(44, 66).toFixed(1) + 'vw'; sky.appendChild(a); setTimeout(function () { a.remove(); }, 14200); }
+  function bolt() { var ns = 'http://www.w3.org/2000/svg'; var svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'bolt'); svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none'); var x = rand(15, 85), y = 0, cx = x, pts = cx.toFixed(1) + ',0 ', end = rand(40, 55); while (y < end) { y += rand(6, 11); cx += rand(-7, 7); pts += cx.toFixed(1) + ',' + y.toFixed(1) + ' '; } var pl = document.createElementNS(ns, 'polyline'); pl.setAttribute('points', pts); svg.appendChild(pl); document.body.appendChild(svg); setTimeout(function () { svg.remove(); }, 430); }
+  function lightning() { if (!flash) return; var I = cfg.intensity; flash.style.transition = 'none'; flash.style.opacity = I; requestAnimationFrame(function () { flash.style.transition = 'opacity .5s ease'; flash.style.opacity = 0; }); setTimeout(function () { flash.style.transition = 'none'; flash.style.opacity = (I * 0.6).toFixed(3); requestAnimationFrame(function () { flash.style.transition = 'opacity .35s ease'; flash.style.opacity = 0; }); }, 95); if (cfg.bolt && Math.random() < 0.6) bolt(); }
+  function fire(t) { if (t === 'shoot') shoot(); else if (t === 'lightning') lightning(); else if (t === 'sat') satellite(); else if (t === 'drone') drone(); else if (t === 'aurore') aurore(); }
+  function loop() { setTimeout(function () { fire(pick(cfg.weights)); loop(); }, rand(cfg.delay[0], cfg.delay[1])); }
+  var calme = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  stars(cfg.stars);
+  if (!calme) loop();
+})();
+</script>
+</body>
+</html>

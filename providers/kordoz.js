@@ -1,4 +1,4 @@
-/* vofamille/yablom - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* vofamille/kordoz - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -622,7 +622,7 @@ async function resolveEmbed(embedUrl, opts) {
 
 
 
-var SITE = {"id": "yablom", "name": "Yablom", "origin": "https://yablom.com", "tag": "yablom", "folder": "euvcw7"};
+var SITE = {"id": "kordoz", "name": "Kordoz", "origin": "https://www.kordoz.com", "tag": "kordoz", "folder": "x0vrxk57ein"};
 
 var PROVIDER_NAME = SITE.name;
 

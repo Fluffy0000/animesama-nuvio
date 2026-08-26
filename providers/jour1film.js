@@ -1,4 +1,4 @@
-/* vofamille/yablom - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* jour1film - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -610,158 +610,237 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- vofamille/index.js ----
-// vofamille — generic provider for the yablom-skeleton family:
-//   yablom.com, kordoz.com, ilmiv.com, kidraz.com (films only, VF/VOSTFR, sharecloudy)
-// Pipeline: resolve folder token -> /{f}/api_search.php?searchword= (Referer REQUIRED)
-//           -> /{f}/b/<tag>/<id> -> iframe (sharecloudy/ofbax) -> direct m3u8.
-// SITE config is injected at build time by build.py (see VARIANTS).
+// ---- jour1film/index.js ----
+// 1Jour1Film — le site (1jour1film0826.online, domaine roulant) est sous Cloudflare strict ;
+// la LISTE des lecteurs passe par l'API publique Movix (api.movix.fun — GET anonyme),
+// puis chaque lecteur est résolu DIRECTEMENT depuis l'appareil (vidara/api-stream, packers…).
+// Contract : TMDB id in -> players VF/VOSTFR -> m3u8 direct.
 
 
 
 
 
 
-var SITE = {"id": "yablom", "name": "Yablom", "origin": "https://yablom.com", "tag": "yablom", "folder": "euvcw7"};
+var PROVIDER_NAME = "1Jour1Film";
+var LOG = "[j1f]";
+var API = "https://api.movix.fun/api/j1f";
+var MAX_RESOLVE = 6;
 
-var PROVIDER_NAME = SITE.name;
-
-function headers(referer) {
-  var h = { "User-Agent": CORE_UA, "Cookie": "g=true" };
-  if (referer) h["Referer"] = referer;
-  return h;
+// ---------- parsing helpers (QuickJS-safe: pas de classe URL) ----------
+function originOf(url) {
+  var m = /^(https?:\/\/[^/]+)/i.exec(url || "");
+  return m ? m[1] : "";
 }
-
-// ---- folder token (validated by content, auto-rediscovered if it rotates) ----
-var cachedFolder = null;
-
-async function folderWorks(folder) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var r = await safeFetch(home, { headers: headers(null) }, 9000);
-  if (!netIsOk(r)) return false;
-  try {
-    var html = await r.text();
-    return html && html.length > 40000; // the real home page is a fat film catalogue
-  } catch (e) { return false; }
-}
-
-async function resolveFolder() {
-  if (cachedFolder) return cachedFolder;
-  if (await folderWorks(SITE.folder)) { cachedFolder = SITE.folder; return cachedFolder; }
-  try {
-    var html = await fetchText(SITE.origin + "/", { headers: headers(null) }, 9000);
-    if (html) {
-      var seen = {}, cands = [], re = /href="\/?([a-zA-Z0-9]{4,14})"/g, m;
-      while ((m = re.exec(html)) !== null) {
-        var tok = m[1];
-        if (!seen[tok]) { seen[tok] = true; cands.push(tok); }
-      }
-      for (var i = 0; i < cands.length; i++) {
-        if (await folderWorks(cands[i])) { cachedFolder = cands[i]; return cachedFolder; }
-      }
-    }
-  } catch (e) {}
-  cachedFolder = SITE.folder;
-  return cachedFolder;
-}
-
-// ---- search (Referer to the folder home is MANDATORY — without it: 0 films) ----
-async function searchFilms(folder, query) {
-  var url = SITE.origin + "/" + folder + "/api_search.php?searchword=" + encodeURIComponent(query);
-  var j = await fetchJson(url, { headers: headers(SITE.origin + "/" + folder + "/home/" + SITE.tag) }, 9000);
-  if (!j || !j.films) return [];
-  var out = [];
-  for (var i = 0; i < j.films.length; i++) {
-    var f = j.films[i];
-    if (!f) continue;
-    // JSON `link` uses a stale folder/tag (/ALBRAD/b/localhost/<id>); only trailing id is real
-    var linkId = "";
-    if (f.link) { var lm = /(\d+)\s*$/.exec(String(f.link)); if (lm) linkId = lm[1]; }
-    if (!linkId && f.id) linkId = String(f.id);
-    if (!linkId) continue;
-    var ym = /\((\d{4})\)/.exec(String(f.title || ""));
-    out.push({ id: linkId, title: String(f.title || ""), vostfr: !!f.vostfr, year: ym ? ym[1] : null });
-  }
-  return out;
-}
-
-// strip trailing "(YYYY)" then slug
-function siteSlug(title) {
-  return slugify(String(title).replace(/\s*\(\d{4}\)\s*$/, ""));
-}
-
-function scoreFilm(film, candSlugs, tmdbYear) {
-  var s = siteSlug(film.title);
-  if (!s) return -1;
-  var best = -1;
-  for (var i = 0; i < candSlugs.length; i++) {
-    var c = candSlugs[i];
-    if (!c) continue;
-    var base = -1;
-    if (s === c) base = 100;
-    else if (s.length > 4 && c.length > 4 && (s.indexOf(c) === 0 || c.indexOf(s) === 0)) base = 55;
-    if (base < 0) continue;
-    if (tmdbYear && film.year) base += (tmdbYear === film.year ? 15 : -25);
-    if (base > best) best = base;
-  }
-  return best;
-}
-
-async function fetchEmbedUrl(folder, linkId) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var html = await fetchText(SITE.origin + "/" + folder + "/b/" + SITE.tag + "/" + linkId,
-                             { headers: headers(home) }, 10000);
-  if (!html) return null;
-  var m = /src="(https?:\/\/[a-z0-9.-]+\/iframe\/[A-Za-z0-9]+)"/i.exec(html);
+function filecodeOf(url) {
+  // NB: vidara utilise des filecodes url-safe pouvant commencer par '-' ou contenir '_'
+  var m = /^https?:\/\/[^/]+\/e\/([0-9a-zA-Z_-]+)\/?$/i.exec(url || "");
   if (m) return m[1];
-  var g = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
-  return g ? g[1] : null;
+  var parts = String(url || "").split("?")[0].split("#")[0].split("/").filter(function (s) { return !!s; });
+  var last = parts[parts.length - 1] || "";
+  return /^[0-9a-zA-Z_-]+$/.test(last) ? last : null;
+}
+
+// ---------- onregardeou.site wrapper : "servers":[{name,url,type}] ----------
+function extractJsonArray(text, key) {
+  var i = text.indexOf('"' + key + '"');
+  if (i < 0) return null;
+  i = text.indexOf("[", i);
+  if (i < 0) return null;
+  var depth = 0, inStr = false, esc = false;
+  for (var j = i; j < text.length; j++) {
+    var ch = text.charAt(j);
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "[") depth++;
+    else if (ch === "]") {
+      depth--;
+      if (depth === 0) return text.slice(i, j + 1);
+    }
+  }
+  return null;
+}
+
+async function unwrapWrapper(url) {
+  var wrap = url.split("#")[0].split("?")[0].replace(/\/+$/, "") + "/";
+  // onregardeou: WAF LiteSpeed erratique (403 par rafales) -> Referer obligatoire + retries
+  var html = null;
+  for (var attempt = 0; attempt < 3 && html === null; attempt++) {
+    var r = await safeFetch(wrap, { headers: {
+      "User-Agent": CORE_UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+      "Referer": originOf(url) + "/"
+    } }, 12000);
+    if (!netIsOk(r)) continue;
+    try { html = await r.text(); } catch (e) { html = null; }
+    if (html && html.indexOf('"servers"') < 0) html = null; // page d'erreur déguisée
+  }
+  if (!html) return null;
+  var raw = extractJsonArray(html, "servers");
+  if (!raw) return null;
+  try {
+    var arr = JSON.parse(raw);
+    return (Array.isArray(arr) && arr.length) ? arr : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ---------- vidara (et miroirs) : POST {origin}/api/stream ----------
+async function resolveVidara(url) {
+  var fc = filecodeOf(url);
+  if (!fc) return null;
+  var origins = [originOf(url)];
+  // la page peut annoncer un miroir (var MIRROR = 'https://...')
+  var r0 = await safeFetch(originOf(url) + "/e/" + fc, { headers: { "User-Agent": CORE_UA } }, 10000);
+  if (netIsOk(r0)) {
+    try {
+      var h = await r0.text();
+      var mm = /MIRROR\s*=\s*'([^']+)'/i.exec(h);
+      if (mm && /^https?:\/\//.test(mm[1])) {
+        var mo = originOf(mm[1]);
+        if (mo && origins.indexOf(mo) < 0) origins.push(mo);
+      }
+      var fo = r0.url && /^https?:\/\//.test(r0.url) ? originOf(r0.url) : null;
+      if (fo && origins.indexOf(fo) < 0) origins.push(fo);
+    } catch (e) {}
+  }
+  for (var i = 0; i < origins.length; i++) {
+    var o = origins[i];
+    if (!o) continue;
+    var res = await safeFetch(o + "/api/stream", {
+      method: "POST",
+      headers: {
+        "User-Agent": CORE_UA,
+        "Accept": "application/json, */*",
+        "Content-Type": "application/json",
+        "Referer": o + "/e/" + fc,
+        "Origin": o
+      },
+      body: JSON.stringify({ filecode: fc, device: "web" })
+    }, 12000);
+    if (!netIsOk(res)) continue;
+    var payload = null;
+    try { payload = await res.json(); } catch (e) { payload = null; }
+    if (payload && typeof payload.streaming_url === "string" && payload.streaming_url.indexOf("http") === 0) {
+      return { url: payload.streaming_url, referer: o + "/", host: "Vidara", subs: null };
+    }
+  }
+  return null;
+}
+
+// ---------- une entrée player -> stream résolu ----------
+async function resolvePlayerEntry(p, title, langKey, epLabel) {
+  var url = p && p.url;
+  if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return [];
+  if (url.indexOf("#") >= 0) return []; // transport par fragment: non résolvable côté appareil
+  var host = hostOf(url);
+  var out = [];
+
+  // wrapper onregardeou -> liste de serveurs imbriqués
+  if (/onregardeou/i.test(url)) {
+    var nested = await unwrapWrapper(url);
+    if (nested) {
+      var jobs = nested.map(function (n) {
+        return { url: n && n.url, name: n && n.name };
+      });
+      var res = await mapLimit(jobs, 3, async function (job) {
+        return resolvePlayerEntry({ url: job.url }, title, langKey, epLabel);
+      });
+      for (var i = 0; i < res.length; i++) if (res[i]) out.push.apply(out, res[i]);
+      return out;
+    }
+    return [];
+  }
+
+  var lang = langKey === "vostfr" ? "VOSTFR" : "VF";
+  var flag = langKey === "vostfr" ? "🇯🇵" : "🇫🇷";
+  var kind, media, referer, hostName;
+
+  if (/vidara/i.test(url)) {
+    var v = await resolveVidara(url);
+    if (!v) return [];
+    media = v.url; referer = v.referer; hostName = "Vidara";
+  } else {
+    var g = await resolveEmbed(url, {});
+    if (!g || !g.url) return [];
+    media = g.url; referer = g.referer; hostName = (g.name || host).replace(/\..*$/, "");
+  }
+
+  kind = /\.m3u8/i.test(media) ? "HLS" : "MP4";
+  hostName = hostName.charAt(0).toUpperCase() + hostName.slice(1);
+  out.push({
+    name: flag + " " + PROVIDER_NAME + " · " + hostName + " · " + lang + " · " + kind,
+    title: title + (epLabel || "") + " · " + hostName + " · " + lang,
+    url: media,
+    quality: "auto",
+    language: lang,
+    provider: PROVIDER_NAME,
+    headers: streamHeaders(referer)
+  });
+  return out;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    if (mediaType === "tv" || mediaType === "anime") return []; // films-only catalogue
-    var info = await getTmdbInfo(tmdbId, mediaType);
-    if (!info.titles.length) return [];
-    var candSlugs = info.titles.map(slugify);
+    var isMovie = mediaType === "movie";
+    season = season || 1;
+    episode = episode || 1;
 
-    var folder = await resolveFolder();
-    var queries = buildQueries(info.titles);
-    var byId = {}, done = false;
-    for (var i = 0; i < queries.length && !done; i++) {
-      var films = await searchFilms(folder, queries[i]);
-      for (var j = 0; j < films.length; j++) {
-        var f = films[j];
-        if (!byId[f.id]) byId[f.id] = f;
-        if (scoreFilm(f, candSlugs, info.year) >= 100) done = true;
+    var url = API + (isMovie
+      ? "/movie/" + encodeURIComponent(String(tmdbId))
+      : "/tv/" + encodeURIComponent(String(tmdbId)) + "/season/" + season + "?episode=" + episode);
+
+    var j = await fetchJson(url, { headers: { "Accept": "application/json" } }, 18000);
+    if (!j || j.success !== true || !j.players) {
+      console.log(LOG + " " + mediaType + "/" + tmdbId + (isMovie ? "" : " S" + season + "E" + episode) + " -> rien");
+      return [];
+    }
+
+    var title = j.title || null;
+    if (!title) {
+      var info = await getTmdbInfo(tmdbId, mediaType);
+      if (info && info.titles && info.titles.length) title = info.titles[0];
+    }
+    title = title || ("TMDB " + tmdbId);
+    var epLabel = isMovie ? "" : " · S" + season + "E" + episode;
+
+    var entries = [];
+    var seen = {};
+    var langs = ["vf", "vostfr"];
+    for (var li = 0; li < langs.length; li++) {
+      var arr = j.players[langs[li]] || [];
+      for (var i = 0; i < arr.length; i++) {
+        var u = arr[i] && arr[i].url;
+        if (typeof u !== "string" || u.indexOf("http") !== 0) continue;
+        var k = langs[li] + "|" + u;
+        if (seen[k]) continue;
+        seen[k] = 1;
+        entries.push({ url: u, langKey: langs[li] });
       }
     }
-    var best = null, bestScore = -1;
-    for (var id in byId) {
-      if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
-      var sc = scoreFilm(byId[id], candSlugs, info.year);
-      if (sc > bestScore) { bestScore = sc; best = byId[id]; }
+    if (!entries.length) return [];
+
+    var results = await mapLimit(entries.slice(0, MAX_RESOLVE), 3, async function (e) {
+      try {
+        return await resolvePlayerEntry(e, title, e.langKey, epLabel);
+      } catch (err) { return []; }
+    });
+    var out = [], seenMedia = {};
+    for (var r = 0; r < results.length; r++) {
+      var list = results[r] || [];
+      for (var x = 0; x < list.length; x++) {
+        if (seenMedia[list[x].url]) continue;
+        seenMedia[list[x].url] = 1;
+        out.push(list[x]);
+      }
     }
-    if (!best || bestScore < 65) return [];
-
-    var embed = await fetchEmbedUrl(folder, best.id);
-    if (!embed) return [];
-    var res = await resolveEmbed(embed, { referer: SITE.origin + "/" });
-    if (!res || !res.url) return [];
-
-    var lang = best.vostfr ? "VOSTFR" : "VF";
-    var flag = best.vostfr ? "🇯🇵" : "🇫🇷";
-    var kind = /\.m3u8/i.test(res.url) ? "HLS" : "MP4";
-    return [{
-      name: flag + " " + PROVIDER_NAME + " · " + res.name + " · " + lang + " · " + kind,
-      title: best.title.replace(/^\u200e/, "") + " · " + lang,
-      url: res.url,
-      quality: "auto",
-      language: lang,
-      provider: PROVIDER_NAME,
-      headers: streamHeaders(res.referer)
-    }];
+    console.log(LOG + " => " + out.length + " streams");
+    return out;
   } catch (e) {
+    console.log(LOG + " Error: " + (e && e.message ? e.message : e));
     return [];
   }
 }

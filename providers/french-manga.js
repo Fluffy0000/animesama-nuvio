@@ -356,6 +356,60 @@ function findVideoUrl(text) {
   if (e) return e[0].replace(/\\\//g, "/");
   return null;
 }
+function hostOf(url) {
+  var m = /^https?:\/\/([^/]+)/i.exec(url);
+  return m ? m[1].toLowerCase() : "";
+}
+var B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+// atob pur JS (QuickJS/Hermes n'ont pas atob)
+function b64Decode(input) {
+  var str = String(input).replace(/=+$/, "");
+  var output = "";
+  if (str.length % 4 === 1) return "";
+  for (var bc = 0, bs = 0, buffer, i = 0; buffer = str.charAt(i++); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0) {
+    buffer = B64_CHARS.indexOf(buffer);
+  }
+  return output;
+}
+// vidzy.cc / fsvid.lol anti-scrape : src = (function(s){ ... })( "BASE64" ) où
+// url = xor( reverse(atob(s)), (0x3d + i*89 + checksum(location.hostname)) & 255 ).
+// Le .m3u8 en clair (var _fsvHls = ".../troll/master.m3u8") est un LEURRE : clip logo 18s.
+function decodeHostCipher(text, embedHost) {
+  var m = /\}\s*\)\s*\(\s*"([A-Za-z0-9+/=]{50,})"\s*\)/.exec(text);
+  if (!m) return null;
+  var b = b64Decode(m[1]);
+  if (!b) return null;
+  var a = b.split("").reverse().join("");
+  var H = 0;
+  for (var j = 0; j < embedHost.length; j++) H = (H + embedHost.charCodeAt(j)) & 255;
+  var r = "";
+  for (var i = 0; i < a.length; i++) r += String.fromCharCode(a.charCodeAt(i) ^ ((0x3d + i * 89 + H) & 255));
+  return /^https?:\/\//.test(r) ? r : null;
+}
+function isCipherHost(url) {
+  return /fsvid|vidzy/i.test(url);
+}
+// Quand le host n'a pas la vidéo il sert un VOD court (clip d'intro ~18s). Une vraie
+// master playlist a des variantes (EXT-X-STREAM-INF); une media playlist VOD courte = leurre.
+function playlistLooksReal(url) {
+  return __async(this, null, function* () {
+    var r = yield safeFetch(url, { headers: { "User-Agent": USER_AGENT } }, 12e3);
+    if (!isOk(r)) return true;
+    var t;
+    try {
+      t = yield r.text();
+    } catch (e) {
+      return true;
+    }
+    if (t.indexOf("#EXTM3U") < 0) return true;
+    if (t.indexOf("#EXT-X-STREAM-INF") >= 0) return true;
+    if (t.indexOf("#EXT-X-ENDLIST") < 0) return true;
+    var mm = t.match(/#EXTINF:[\d.]+/g) || [];
+    var sum = 0;
+    for (var i = 0; i < mm.length; i++) sum += parseFloat(mm[i].split(":")[1]) || 0;
+    return sum >= 240;
+  });
+}
 function resolveHost(hostKey, embedUrl) {
   return __async(this, null, function* () {
     var origin = originOf(embedUrl);
@@ -379,9 +433,23 @@ function resolveHost(hostKey, embedUrl) {
     }
     var unpacked = unpackPacked(html);
     var searchIn = unpacked && unpacked.length ? unpacked : html;
-    var video = findVideoUrl(searchIn);
+    // Famille fsvid/vidzy : le vrai lien est chiffré (cipher hostname-xor, checksum du host
+    // FINAL après redirection). Le .m3u8 en clair est le leurre /troll/. Leur CDN répond
+    // 200 SANS Referer mais 403 avec certains Referer -> stream sans Referer.
+    var cipherHost = isCipherHost(embedUrl);
+    var video = null;
+    if (cipherHost) {
+      video = decodeHostCipher(searchIn, hostOf(r.url || embedUrl)) || decodeHostCipher(html, hostOf(r.url || embedUrl));
+      if (video) referer = "";
+    }
+    if (!video) video = findVideoUrl(searchIn);
     if (!video) video = findVideoUrl(html);
     if (!video) return null;
+    if (/\/troll\//i.test(video)) return null;
+    if (cipherHost && /\.m3u8/i.test(video)) {
+      var looksReal = yield playlistLooksReal(video);
+      if (!looksReal) return null;
+    }
     var externalSubs = [];
     var vtt = /https?:\/\/[^\s"'\\)]+\.vtt[^\s"'\\)]*/i.exec(searchIn) || /https?:\/\/[^\s"'\\)]+\.vtt[^\s"'\\)]*/i.exec(html);
     if (vtt) externalSubs.push({ url: vtt[0], lang: "fr", language: "Fran\xE7ais" });
@@ -410,9 +478,11 @@ function codecLabel(codecs) {
 function explodeHls(masterUrl, referer) {
   return __async(this, null, function* () {
     var text;
+    var hlsHeaders = { "User-Agent": USER_AGENT, "Accept": "*/*" };
+    if (referer) hlsHeaders["Referer"] = referer;
     try {
       text = yield fetchText(masterUrl, {
-        headers: { "User-Agent": USER_AGENT, "Referer": referer, "Accept": "*/*" }
+        headers: hlsHeaders
       }, 12e3);
     } catch (e) {
       return [];
@@ -471,9 +541,11 @@ function explodeHls(masterUrl, referer) {
 function mp4Alive(url, referer) {
   return __async(this, null, function* () {
     try {
+      var mp4Headers = { "User-Agent": USER_AGENT, "Range": "bytes=0-1" };
+      if (referer) mp4Headers["Referer"] = referer;
       var r = yield safeFetch(url, {
         method: "GET",
-        headers: { "User-Agent": USER_AGENT, "Referer": referer, "Range": "bytes=0-1" }
+        headers: mp4Headers
       }, 9e3);
       if (!r) return true;
       if (r.status === 403 || r.status === 404 || r.status === 410 || r.status >= 500) return false;
@@ -685,6 +757,8 @@ function buildStreamsForHost(job) {
     var display = hostDisplayName(job.hostKey, job.embedUrl);
     var langLabel = job.lang === "vf" ? "VF" : "VOSTFR";
     var flag = job.lang === "vf" ? "\u{1F1EB}\u{1F1F7}" : "\u{1F1EF}\u{1F1F5}";
+    var streamHeaders = { "User-Agent": USER_AGENT };
+    if (resolved.referer) streamHeaders["Referer"] = resolved.referer;
     if (resolved.kind === "hls") {
       var variants = yield explodeHls(resolved.masterUrl, resolved.referer);
       if (!variants.length) return null;
@@ -700,7 +774,7 @@ function buildStreamsForHost(job) {
           quality: v.quality || "HD",
           language: langLabel,
           provider: display,
-          headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+          headers: streamHeaders,
           _sort: { lang: job.lang, height: v.height || 0, host: display }
         };
         if (resolved.externalSubs && resolved.externalSubs.length && !v.hasSubs) s.subtitles = resolved.externalSubs;
@@ -716,7 +790,7 @@ function buildStreamsForHost(job) {
       quality: "HD",
       language: langLabel,
       provider: display,
-      headers: { "Referer": resolved.referer, "User-Agent": USER_AGENT },
+      headers: streamHeaders,
       _sort: { lang: job.lang, height: 1, host: display }
     };
     if (resolved.externalSubs && resolved.externalSubs.length) one.subtitles = resolved.externalSubs;

@@ -1,4 +1,4 @@
-/* vofamille/yablom - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* vostfree - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -610,158 +610,218 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- vofamille/index.js ----
-// vofamille — generic provider for the yablom-skeleton family:
-//   yablom.com, kordoz.com, ilmiv.com, kidraz.com (films only, VF/VOSTFR, sharecloudy)
-// Pipeline: resolve folder token -> /{f}/api_search.php?searchword= (Referer REQUIRED)
-//           -> /{f}/b/<tag>/<id> -> iframe (sharecloudy/ofbax) -> direct m3u8.
-// SITE config is injected at build time by build.py (see VARIANTS).
+// ---- vostfree/index.js ----
+// vostfree — provider for vostfree.ws (DataLife Engine, anime VF/VOSTFR)
+// Two post shapes:
+//  A) per-episode/movie posts  -> host embeds lie raw in the HTML (dood/getvid/...)
+//  B) full-series posts        -> <option value="buttons_N">Episode ..N</option>;
+//     buttons_<ep> holds <div id="player_<pid>" class="new_player_<host>">,
+//     and #content_player_<pid> holds an opaque id/url per host
+//     (sibnet video id, uqload embed id, gtv id, direct url...).
 
 
 
 
 
 
-var SITE = {"id": "yablom", "name": "Yablom", "origin": "https://yablom.com", "tag": "yablom", "folder": "euvcw7"};
+var ORIGIN = "https://vostfree.ws";
+var MAX_POSTS = 3;
+var MAX_EMBEDS = 6;
 
-var PROVIDER_NAME = SITE.name;
+function log(m) {
+  try {
+    if (typeof process !== "undefined" && process && process.env && process.env.VOSTFREE_DEBUG) console.error("VF| " + m);
+  } catch (e) {}
+}
 
-function headers(referer) {
-  var h = { "User-Agent": CORE_UA, "Cookie": "g=true" };
+function hdrs(referer) {
+  var h = { "User-Agent": CORE_UA };
   if (referer) h["Referer"] = referer;
   return h;
 }
 
-// ---- folder token (validated by content, auto-rediscovered if it rotates) ----
-var cachedFolder = null;
-
-async function folderWorks(folder) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var r = await safeFetch(home, { headers: headers(null) }, 9000);
-  if (!netIsOk(r)) return false;
-  try {
-    var html = await r.text();
-    return html && html.length > 40000; // the real home page is a fat film catalogue
-  } catch (e) { return false; }
-}
-
-async function resolveFolder() {
-  if (cachedFolder) return cachedFolder;
-  if (await folderWorks(SITE.folder)) { cachedFolder = SITE.folder; return cachedFolder; }
-  try {
-    var html = await fetchText(SITE.origin + "/", { headers: headers(null) }, 9000);
-    if (html) {
-      var seen = {}, cands = [], re = /href="\/?([a-zA-Z0-9]{4,14})"/g, m;
-      while ((m = re.exec(html)) !== null) {
-        var tok = m[1];
-        if (!seen[tok]) { seen[tok] = true; cands.push(tok); }
-      }
-      for (var i = 0; i < cands.length; i++) {
-        if (await folderWorks(cands[i])) { cachedFolder = cands[i]; return cachedFolder; }
-      }
-    }
-  } catch (e) {}
-  cachedFolder = SITE.folder;
-  return cachedFolder;
-}
-
-// ---- search (Referer to the folder home is MANDATORY — without it: 0 films) ----
-async function searchFilms(folder, query) {
-  var url = SITE.origin + "/" + folder + "/api_search.php?searchword=" + encodeURIComponent(query);
-  var j = await fetchJson(url, { headers: headers(SITE.origin + "/" + folder + "/home/" + SITE.tag) }, 9000);
-  if (!j || !j.films) return [];
-  var out = [];
-  for (var i = 0; i < j.films.length; i++) {
-    var f = j.films[i];
-    if (!f) continue;
-    // JSON `link` uses a stale folder/tag (/ALBRAD/b/localhost/<id>); only trailing id is real
-    var linkId = "";
-    if (f.link) { var lm = /(\d+)\s*$/.exec(String(f.link)); if (lm) linkId = lm[1]; }
-    if (!linkId && f.id) linkId = String(f.id);
-    if (!linkId) continue;
-    var ym = /\((\d{4})\)/.exec(String(f.title || ""));
-    out.push({ id: linkId, title: String(f.title || ""), vostfr: !!f.vostfr, year: ym ? ym[1] : null });
+// ---- search results ------------------------------------------------------------
+function searchPosts(html) {
+  var out = [], seen = {}, m;
+  var re = /href="(https?:\/\/[^"]*?vostfree\.ws\/(?:bridge\.php\?url=)?\/?(\d+)-([a-z0-9-]+)\.html[^"]*)"/gi;
+  while ((m = re.exec(html)) !== null) {
+    var url = m[1], slug = m[3];
+    if (/\.(css|js|png|jpg)/.test(url)) continue;
+    if (seen[url]) continue;
+    seen[url] = true;
+    out.push({ url: url, slug: slug.toLowerCase() });
   }
   return out;
 }
 
-// strip trailing "(YYYY)" then slug
-function siteSlug(title) {
-  return slugify(String(title).replace(/\s*\(\d{4}\)\s*$/, ""));
-}
-
-function scoreFilm(film, candSlugs, tmdbYear) {
-  var s = siteSlug(film.title);
-  if (!s) return -1;
-  var best = -1;
+// title sanity for a post slug: share >= 2 long tokens with some candidate (or full slug contained)
+function slugTitleOk(slug, candSlugs) {
+  var toks = slug.split("-").filter(function (x) { return x.length >= 5 && !/^\d+$/.test(x); });
   for (var i = 0; i < candSlugs.length; i++) {
     var c = candSlugs[i];
     if (!c) continue;
-    var base = -1;
-    if (s === c) base = 100;
-    else if (s.length > 4 && c.length > 4 && (s.indexOf(c) === 0 || c.indexOf(s) === 0)) base = 55;
-    if (base < 0) continue;
-    if (tmdbYear && film.year) base += (tmdbYear === film.year ? 15 : -25);
-    if (base > best) best = base;
+    var ct = c.split("-").filter(function (x) { return x.length >= 5; });
+    var hits = 0;
+    for (var j = 0; j < ct.length; j++) {
+      if (slug.indexOf(ct[j]) !== -1) hits++;
+    }
+    if (ct.length && hits >= Math.min(2, ct.length)) return true;
+    if (c.length >= 8 && slug.indexOf(c) !== -1) return true;
   }
-  return best;
+  return false;
 }
 
-async function fetchEmbedUrl(folder, linkId) {
-  var home = SITE.origin + "/" + folder + "/home/" + SITE.tag;
-  var html = await fetchText(SITE.origin + "/" + folder + "/b/" + SITE.tag + "/" + linkId,
-                             { headers: headers(home) }, 10000);
-  if (!html) return null;
-  var m = /src="(https?:\/\/[a-z0-9.-]+\/iframe\/[A-Za-z0-9]+)"/i.exec(html);
-  if (m) return m[1];
-  var g = /<iframe[^>]*src="(https?:\/\/[^"]+)"/i.exec(html);
-  return g ? g[1] : null;
+// is this post usable for our request?
+function postMatches(slug, candSlugs, absEp, isMovie) {
+  if (!slugTitleOk(slug, candSlugs)) return { ok: false };
+  if (isMovie) return { ok: true };
+  var em = /-(\d{1,4})-(?:vostfr|vf)(?:-|$)/i.exec(slug);
+  if (em) {
+    var n = parseInt(em[1], 10);
+    return n === absEp ? { ok: true, perEpisode: true } : { ok: false };
+  }
+  return { ok: true, series: true }; // no ep number -> full-series post
+}
+
+// ---- embed extraction, shape A: raw urls in post html ---------------------------
+function postEmbeds(html) {
+  var out = [], seen = {}, m;
+  var re = /https?:\/\/(?:[a-z0-9-]*dood[a-z0-9-]*\.[a-z.]+|ds2(?:play|video)\.[a-z.]+|getvid\.club|video\.sibnet\.ru|[a-z0-9.-]*voe[a-z0-9.-]*\.[a-z]{2,}|uqload\.[a-z.]+|filemoon\.[a-z.]+|vidmoly\.[a-z.]+|sendvid\.com|mixdrop\.[a-z.]+|streamtape\.[a-z.]+)\/[^\s"'<>),;\]\\]+/gi;
+  while ((m = re.exec(html)) !== null) {
+    var u = m[0];
+    if (/\.(jpg|jpeg|png|css|js|ico)($|\?)/i.test(u)) continue;
+    if (!seen[u]) { seen[u] = true; out.push(u); }
+  }
+  return out;
+}
+
+// ---- embed extraction, shape B: typed player ids for one episode -----------------
+// returns [{url}]
+function episodeEmbeds(html, absEp) {
+  // buttons_N matches episode N (labels are "Episode 01"/"Episode 010" etc.)
+  var bm = new RegExp('id="buttons_' + absEp + '" class="button_box">(.*?)</div>\\s*(?=<div id="buttons_|</div>)', "i").exec(html);
+  if (!bm) return [];
+  var block = bm[1];
+  var out = [], seen = {}, pm;
+  var pre = /id="(player_\d+)" class="(new_player_[a-z0-9_]+)(?:\s+nower)?"/gi;
+  while ((pm = pre.exec(block)) !== null) {
+    var pid = pm[1], type = pm[2];
+    var cm = new RegExp('id="content_' + pid + '"[^>]*>([^<]{1,500})', "i").exec(html);
+    if (!cm) continue;
+    var content = cm[1].trim();
+    var urls = buildUrlsFor(type, content);
+    for (var q = 0; q < urls.length; q++) {
+      if (!seen[urls[q]]) { seen[urls[q]] = true; out.push(urls[q]); }
+    }
+  }
+  return out;
+}
+
+// typed host -> embed url candidates
+function buildUrlsFor(type, content) {
+  var c = content;
+  if (/^https?:\/\//i.test(c)) return [c];
+  switch (type) {
+    case "new_player_sibnet":   return ["https://video.sibnet.ru/shell.php?videoid=" + encodeURIComponent(c)];
+    case "new_player_uqload":
+    case "new_player_vip":      return ["https://uqload.com/embed-" + c + ".html", "https://uqload.io/embed-" + c + ".html"];
+    case "new_player_gtv":      return ["https://iframedream.com/embed/" + c + ".html"];
+    case "new_player_doo":
+    case "new_player_dood":     return ["https://dood.so/e/" + c];
+    case "new_player_fembed":   return ["https://feurl.com/v/" + c, "https://fembed.com/v/" + c];
+    case "new_player_mytv":
+    case "new_player_myvi":     return ["https://fs.myvi.ru/player/embed/html/" + c];
+    case "new_player_mp4":      return [];
+    case "new_player_mail2":
+    case "new_player_mail":     return []; // mail.ru ids unresolved
+    case "new_player_next":
+    case "new_player_vidfast":  return ["https://hdvb.cc/embed/" + c + ".html"];
+    default:
+      if (/^[A-Za-z0-9_-]{8,40}$/.test(c)) {
+        return ["https://uqload.com/embed-" + c + ".html", "https://dood.so/e/" + c];
+      }
+      return [];
+  }
+}
+
+async function streamsFromEmbeds(embeds, referer, label, langBase, streams) {
+  var limited = embeds.slice(0, MAX_EMBEDS);
+  var resolved = await mapLimit(limited, 3, function (e) { return resolveEmbed(e, { referer: referer }); });
+  var seenUrls = {};
+  for (var s0 = 0; s0 < streams.length; s0++) seenUrls[streams[s0].url] = true;
+  for (var i = 0; i < resolved.length && streams.length < 9; i++) {
+    var x = resolved[i];
+    if (!x || !x.url || seenUrls[x.url]) continue;
+    seenUrls[x.url] = true;
+    var lang = langBase;
+    var flag = lang === "VF" ? "🇫🇷" : "🇯🇵";
+    var kind = /\.m3u8/i.test(x.url) ? "HLS" : "MP4";
+    streams.push({
+      name: flag + " Vostfree · " + x.name + " · " + lang + " · " + kind,
+      title: label + " · " + lang,
+      url: x.url,
+      quality: "auto",
+      language: lang,
+      provider: "Vostfree",
+      headers: streamHeaders(x.referer)
+    });
+  }
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    if (mediaType === "tv" || mediaType === "anime") return []; // films-only catalogue
+    var isMovie = mediaType === "movie";
     var info = await getTmdbInfo(tmdbId, mediaType);
     if (!info.titles.length) return [];
-    var candSlugs = info.titles.map(slugify);
 
-    var folder = await resolveFolder();
-    var queries = buildQueries(info.titles);
-    var byId = {}, done = false;
-    for (var i = 0; i < queries.length && !done; i++) {
-      var films = await searchFilms(folder, queries[i]);
-      for (var j = 0; j < films.length; j++) {
-        var f = films[j];
-        if (!byId[f.id]) byId[f.id] = f;
-        if (scoreFilm(f, candSlugs, info.year) >= 100) done = true;
+    var absEp = episode || 1;
+    if (!isMovie) {
+      var smap = await getSeasonMap(tmdbId);
+      absEp = absoluteFromSeasonMap(smap, season || 1, episode || 1);
+    }
+
+    var alt = await getAltTitles(tmdbId, mediaType);
+    var candSlugs = info.titles.concat(alt).map(slugify);
+    var queries = buildQueries(info.titles.concat(alt.slice(0, 2)));
+    log("queries: " + queries.join(" | "));
+
+    // pick posts: prefer per-episode, then series-level
+    var perEp = [], series = [], seenPosts = {};
+    for (var i = 0; i < queries.length && (perEp.length + series.length) < MAX_POSTS; i++) {
+      var q = queries[i];
+      var html = await fetchText(ORIGIN + "/index.php?do=search&subaction=search&story=" + encodeURIComponent(q),
+                                 { headers: hdrs(ORIGIN + "/") }, 10000);
+      if (!html) continue;
+      var posts = searchPosts(html);
+      for (var j = 0; j < posts.length && (perEp.length + series.length) < MAX_POSTS; j++) {
+        var p = posts[j];
+        if (seenPosts[p.url]) continue;
+        var m = postMatches(p.slug, candSlugs, absEp, isMovie);
+        if (!m.ok) continue;
+        seenPosts[p.url] = true;
+        if (m.perEpisode) perEp.push(p); else if (m.series) series.push(p);
+        if (isMovie) break;
       }
     }
-    var best = null, bestScore = -1;
-    for (var id in byId) {
-      if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
-      var sc = scoreFilm(byId[id], candSlugs, info.year);
-      if (sc > bestScore) { bestScore = sc; best = byId[id]; }
+    var picks = (isMovie ? series.concat(perEp) : perEp.concat(series)).slice(0, MAX_POSTS);
+    log("picks: " + picks.map(function (p) { return p.slug; }).join(", "));
+    if (!picks.length) return [];
+
+    var streams = [];
+    var label = isMovie ? info.titles[0] : info.titles[0] + " · Épisode " + absEp;
+    for (var k = 0; k < picks.length && streams.length < 9; k++) {
+      var post = picks[k];
+      var phtml = await fetchText(post.url, { headers: hdrs(ORIGIN + "/") }, 12000);
+      if (!phtml) continue;
+      var lang = /(^|[^a-z])vf([^a-z]|$)/i.test(post.slug) && !/vostfr/i.test(post.slug) ? "VF" : "VOSTFR";
+      var embeds = postEmbeds(phtml);
+      if (!isMovie && !embeds.length) embeds = episodeEmbeds(phtml, absEp);
+      log(post.slug + " embeds=" + embeds.length);
+      await streamsFromEmbeds(embeds, post.url, label, lang, streams);
     }
-    if (!best || bestScore < 65) return [];
-
-    var embed = await fetchEmbedUrl(folder, best.id);
-    if (!embed) return [];
-    var res = await resolveEmbed(embed, { referer: SITE.origin + "/" });
-    if (!res || !res.url) return [];
-
-    var lang = best.vostfr ? "VOSTFR" : "VF";
-    var flag = best.vostfr ? "🇯🇵" : "🇫🇷";
-    var kind = /\.m3u8/i.test(res.url) ? "HLS" : "MP4";
-    return [{
-      name: flag + " " + PROVIDER_NAME + " · " + res.name + " · " + lang + " · " + kind,
-      title: best.title.replace(/^\u200e/, "") + " · " + lang,
-      url: res.url,
-      quality: "auto",
-      language: lang,
-      provider: PROVIDER_NAME,
-      headers: streamHeaders(res.referer)
-    }];
+    return streams;
   } catch (e) {
+    log("THREW " + (e && e.message ? e.message : e));
     return [];
   }
 }
