@@ -1,5 +1,5 @@
-/* jour1film - built 2026-08-26T11:58:06Z — GENERATED from src/, edit sources then `python3 build.py` */
-// ---- core\net.js ----
+/* jour1film - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+// ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
 var CORE_UA =
@@ -95,7 +95,7 @@ function streamHeaders(referer) {
   return h;
 }
 
-// ---- core\text.js ----
+// ---- core/text.js ----
 // core/text.js — slugify, accents, Dean-Edwards unpacker, video-url finders (QuickJS safe)
 
 var ACCENT_MAP = {
@@ -253,7 +253,7 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
-// ---- core\tmdb.js ----
+// ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
 
@@ -374,7 +374,7 @@ function buildQueries(titles) {
   return out.slice(0, 10);
 }
 
-// ---- core\hosts.js ----
+// ---- core/hosts.js ----
 // core/hosts.js — resolve an embed/player URL to a direct video { url, referer, name } | null
 // All requests go DIRECT from the device. No proxy, no third-party relay, ever.
 
@@ -616,7 +616,7 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- jour1film\index.js ----
+// ---- jour1film/index.js ----
 // 1Jour1Film — le site (1jour1film0826.online, domaine roulant) est sous Cloudflare strict ;
 // la LISTE des lecteurs passe par l'API publique Movix (api.movix.fun — GET anonyme),
 // puis chaque lecteur est résolu DIRECTEMENT depuis l'appareil (vidara/api-stream, packers…).

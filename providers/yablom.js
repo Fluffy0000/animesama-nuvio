@@ -1,5 +1,5 @@
-/* vofamille/yablom - built 2026-08-26T11:58:06Z — GENERATED from src/, edit sources then `python3 build.py` */
-// ---- core\net.js ----
+/* vofamille/yablom - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+// ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
 var CORE_UA =
@@ -95,7 +95,7 @@ function streamHeaders(referer) {
   return h;
 }
 
-// ---- core\text.js ----
+// ---- core/text.js ----
 // core/text.js — slugify, accents, Dean-Edwards unpacker, video-url finders (QuickJS safe)
 
 var ACCENT_MAP = {
@@ -253,7 +253,7 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
-// ---- core\tmdb.js ----
+// ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
 
@@ -374,7 +374,7 @@ function buildQueries(titles) {
   return out.slice(0, 10);
 }
 
-// ---- core\hosts.js ----
+// ---- core/hosts.js ----
 // core/hosts.js — resolve an embed/player URL to a direct video { url, referer, name } | null
 // All requests go DIRECT from the device. No proxy, no third-party relay, ever.
 
@@ -616,7 +616,7 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- vofamille\index.js ----
+// ---- vofamille/index.js ----
 // vofamille — generic provider for the yablom-skeleton family:
 //   yablom.com, kordoz.com, ilmiv.com, kidraz.com (films only, VF/VOSTFR, sharecloudy)
 // Pipeline: resolve folder token -> /{f}/api_search.php?searchword= (Referer REQUIRED)

@@ -1,5 +1,5 @@
-/* fstream - built 2026-08-26T12:26:21Z — GENERATED from src/, edit sources then `python3 build.py` */
-// ---- core\net.js ----
+/* fstream - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+// ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
 var CORE_UA =
@@ -95,7 +95,7 @@ function streamHeaders(referer) {
   return h;
 }
 
-// ---- core\text.js ----
+// ---- core/text.js ----
 // core/text.js — slugify, accents, Dean-Edwards unpacker, video-url finders (QuickJS safe)
 
 var ACCENT_MAP = {
@@ -253,7 +253,7 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
-// ---- core\tmdb.js ----
+// ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
 
@@ -374,7 +374,7 @@ function buildQueries(titles) {
   return out.slice(0, 10);
 }
 
-// ---- core\hosts.js ----
+// ---- core/hosts.js ----
 // core/hosts.js — resolve an embed/player URL to a direct video { url, referer, name } | null
 // All requests go DIRECT from the device. No proxy, no third-party relay, ever.
 
@@ -616,7 +616,7 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- fstream\index.js ----
+// ---- fstream/index.js ----
 // FStream·One — french-stream.one (miroir French Stream), films & séries VF/VFQ/VFF/VOSTFR.
 // La LISTE des lecteurs passe par l'API publique Movix (api.movix.fun — GET anonyme, lien
 // vers fstream page + embeds déjà groupés), puis chaque embed est résolu DIRECTEMENT depuis
@@ -739,11 +739,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     title = title || ("TMDB " + tmdbId);
     var epLabel = isMovie ? "" : " · S" + season + "E" + episode;
 
-    // Deadline globale : mieux vaut renvoyer vite 2-3 liens sûrs que 8 liens dans 60 s
-    // (Nuvio peut abandonner un getStreams long -> l'utilisateur voit "0 résultat").
-    var t0 = Date.now(), DEADLINE_MS = 20000;
     var results = await mapLimit(entries.slice(0, MAX_RESOLVE), 3, async function (e) {
-      if (Date.now() - t0 > DEADLINE_MS) return null;
       try { return await resolveEntry(e, title, epLabel); } catch (err) { return null; }
     });
 

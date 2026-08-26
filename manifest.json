@@ -1,162 +1,896 @@
 {
-  "name": "Nuvio Repo — Gabriel",
-  "version": "1.33.0",
+  "name": "Nuvio Ultimate Arsenal \u2014 Unified Edition (v1.35.0)",
+  "version": "1.35.0",
   "scrapers": [
     {
       "id": "animesama-fr",
-      "name": "🐍 Anime-Sama",
-      "description": "Anime-Sama VOSTFR/VF",
+      "name": "\ud83d\udc0d Anime-Sama",
+      "description": "Anime-Sama VOSTFR/VF (Catalogue complet & sorties du jour)",
       "version": "2.6.3",
-      "author": "",
-      "supportedTypes": ["movie", "tv", "anime"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
       "filename": "providers/animesama.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr", "en"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
     },
     {
       "id": "french-manga",
-      "name": "🍥 French-Manga",
-      "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo) — cipher anti-leurre : vrai contenu garanti",
+      "name": "\ud83c\udf65 French-Manga",
+      "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo) \u2014 cipher anti-leurre",
       "version": "1.1.2",
-      "author": "",
-      "supportedTypes": ["movie", "tv", "anime"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
       "filename": "providers/french-manga.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr", "en"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
     },
     {
       "id": "yablom",
-      "name": "🎬 Yablom",
-      "description": "Films VF/VOSTFR depuis yablom.com (Sharecloudy HLS) — moteur v2 + Referer fix",
+      "name": "\ud83c\udfac Yablom",
+      "description": "Films VF/VOSTFR depuis yablom.com (Sharecloudy HLS)",
       "version": "2.0.0",
-      "author": "",
-      "supportedTypes": ["movie"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
       "filename": "providers/yablom.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "kordoz",
-      "name": "🎬 Kordoz",
-      "description": "Films VF/VOSTFR depuis kordoz.com (même moteur que Yablom, catalogue complémentaire)",
+      "name": "\ud83c\udfac Kordoz",
+      "description": "Films VF/VOSTFR depuis kordoz.com (catalogue compl\u00e9mentaire)",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
       "filename": "providers/kordoz.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "ilmiv",
-      "name": "🌟 Ilmiv",
-      "description": "Films VF/VOSTFR depuis ilmiv.com (même moteur que Yablom, catalogue complémentaire)",
+      "name": "\ud83c\udf1f Ilmiv",
+      "description": "Films VF/VOSTFR depuis ilmiv.com (catalogue compl\u00e9mentaire)",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
       "filename": "providers/ilmiv.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "kidraz",
-      "name": "🍿 Kidraz",
-      "description": "Films VF/VOSTFR depuis kidraz.com (même moteur que Yablom, catalogue complémentaire)",
+      "name": "\ud83c\udf7f Kidraz",
+      "description": "Films VF/VOSTFR depuis kidraz.com (catalogue compl\u00e9mentaire)",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
       "filename": "providers/kidraz.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "cinestream",
-      "name": "🎞️ CineStream",
-      "description": "Films VF/VOSTFR depuis cinestream.info — lecteurs adressés DIRECTEMENT par ID TMDB (Uqload, Luluvdo, Vidmoly, Voe...)",
+      "name": "\ud83c\udf9e\ufe0f CineStream",
+      "description": "Films VF/VOSTFR depuis cinestream.info \u2014 Uqload, Luluvdo, Vidmoly, Voe",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
       "filename": "providers/cinestream.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "fs20",
-      "name": "🎥 French Stream",
-      "description": "Films & séries live-action VF/VOSTFR — fs20.lol avec bascule auto sur miroirs fs16.lol / french-stream.one si bloqué (Premium, Vidzy, Uqload) — cipher anti-leurre : vrai contenu garanti",
+      "name": "\ud83c\udfa5 French Stream",
+      "description": "Films & s\u00e9ries live-action VF/VOSTFR \u2014 fs20.lol (Premium, Vidzy, Uqload)",
       "version": "1.3.3",
-      "author": "",
-      "supportedTypes": ["movie", "tv"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
       "filename": "providers/fs20.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "fstream",
-      "name": "📡 FStream·One",
-      "description": "Films & séries VF/VFQ/VFF/VOSTFR depuis french-stream.one (API Movix publique) — lecteurs pré-triés par langue, cipher fsvid/vidzy décodé localement : vrai contenu garanti",
+      "name": "\ud83d\udce1 FStream\u00b7One",
+      "description": "Films & s\u00e9ries VF/VFQ/VFF/VOSTFR depuis french-stream.one (API Movix publique)",
       "version": "1.0.1",
-      "author": "",
-      "supportedTypes": ["movie", "tv"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
       "filename": "providers/fstream.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr"]
-    },
-    {
-      "id": "diag-fstream",
-      "name": "🔍 DIAG v20 · FStream",
-      "description": "Execute FStream·One pas-a-pas et affiche en 1 ligne ou ca bloque : API movix, groupes de langue, 1er embed, cipher. Aucune resolution complete.",
-      "version": "20.0.0",
-      "author": "",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/diag-fstream.js",
-      "enabled": true,
-      "formats": ["mp4"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     },
     {
       "id": "voiranime",
-      "name": "🐸 VoirAnime",
-      "description": "Anime VOSTFR/VF depuis voir-anime.to — séries multi-saisons (mapping TMDB->absolu + noms d'arcs), films de saga, Vidmoly/Voembed HLS",
+      "name": "\ud83d\udc38 VoirAnime",
+      "description": "Anime VOSTFR/VF depuis voir-anime.to \u2014 multi-saisons, Vidmoly/Voembed",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie", "tv", "anime"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
       "filename": "providers/voiranime.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr", "en"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
     },
     {
       "id": "vostfree",
-      "name": "💜 Vostfree",
-      "description": "Anime VOSTFR/VF depuis vostfree.ws — séries complètes (tous épisodes Sibnet/Uqload), posts par épisode, films",
+      "name": "\ud83d\udc9c Vostfree",
+      "description": "Anime VOSTFR/VF depuis vostfree.ws \u2014 s\u00e9ries compl\u00e8tes Sibnet/Uqload",
       "version": "1.0.0",
-      "author": "",
-      "supportedTypes": ["movie", "tv", "anime"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
       "filename": "providers/vostfree.js",
       "enabled": true,
-      "formats": ["mp4", "mkv"],
-      "contentLanguage": ["fr", "en"]
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
+    },
+    {
+      "id": "purstream",
+      "name": "\ud83d\udca7 PurStream",
+      "description": "Films et s\u00e9ries en streaming \u00e9pur\u00e9",
+      "version": "1.0.0",
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/purstream.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "jour1film",
+      "name": "\ud83c\udfac Jour1Film",
+      "description": "Films r\u00e9cents en streaming VF",
+      "version": "1.0.0",
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/jour1film.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "streamzo",
+      "name": "StreamZo",
+      "description": "Films et s\u00e9ries en streaming VF/VOSTFR sur Streamzo.fr (multi-serveurs)",
+      "version": "1.0.3",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/streamzo.js",
+      "enabled": true,
+      "formats": [
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "wookafr",
+      "name": "Wookafr",
+      "description": "Films et s\u00e9ries en streaming VF sur Wookafr",
+      "version": "1.0.10",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/wookafr.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "animoflix",
+      "name": "AnimoFlix",
+      "description": "Animes VF et VOSTFR sur AnimoFlix",
+      "version": "1.0.14",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/animoflix.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "animesultra",
+      "name": "AnimesUltra",
+      "description": "Animes en streaming VOSTFR et VF",
+      "version": "1.0.34",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/animesultra.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "animevostfr",
+      "name": "AnimeVOSTFR",
+      "description": "Animes VF et VOSTFR en streaming gratuit",
+      "version": "1.1.49",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/animevostfr.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "coflix",
+      "name": "Coflix",
+      "description": "Films et s\u00e9ries en streaming VF/VOSTFR sur Coflix.wiki",
+      "version": "1.0.9",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/coflix.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "dulourd",
+      "name": "DuLourd",
+      "description": "S\u00e9ries, animes et cartoons en streaming VF et VOSTFR",
+      "version": "1.0.11",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "tv"
+      ],
+      "filename": "providers/dulourd.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "flemmix",
+      "name": "Flemmix",
+      "description": "Films et s\u00e9ries en streaming VF/VOSTFR sur Flemmix",
+      "version": "1.0.9",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/flemmix.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "french-anime",
+      "name": "French-Anime",
+      "description": "Animes VF et VOSTFR en streaming sur French-Anime.com",
+      "version": "1.0.1",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/french-anime.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "movix",
+      "name": "Movix",
+      "description": "Films, S\u00e9ries et Animes en VF et VOSTFR",
+      "version": "0.1.0",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/movix.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "mugiwarastream",
+      "name": "Mugiwara-no-Streaming",
+      "description": "Streaming gratuit d'animes et scans en bonne qualit\u00e9",
+      "version": "1.0.14",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/mugiwarastream.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "sekai",
+      "name": "Sekai",
+      "description": "Fournisseur sp\u00e9cialis\u00e9 sur les gros animes. Streams directs tr\u00e8s rapides",
+      "version": "1.0.22",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/sekai.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "voiranime-rip",
+      "name": "VoirAnime.rip",
+      "description": "Animes VF et VOSTFR en streaming sur VoirAnime.rip",
+      "version": "1.0.10",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/voiranime-rip.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "nakios",
+      "name": "Nakios",
+      "description": "Films et s\u00e9ries en streaming MP4 via Nakios (API REST, TMDB natif)",
+      "version": "1.0.1",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/nakios.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
+    },
+    {
+      "id": "papadustream",
+      "name": "Papadustream",
+      "description": "S\u00e9ries TV en streaming HLS multi-qualit\u00e9",
+      "version": "1.0.3",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "tv"
+      ],
+      "filename": "providers/papadustream.js",
+      "enabled": true,
+      "formats": [
+        "m3u8"
+      ],
+      "contentLanguage": [
+        "fr",
+        "en"
+      ]
+    },
+    {
+      "id": "waveanime",
+      "name": "WaveAnime",
+      "description": "Animes en DASH via waveanime.fr",
+      "version": "0.0.3",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/waveanime.js",
+      "enabled": true,
+      "formats": [
+        "dash"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "anime-ultime",
+      "name": "Anime-Ultime",
+      "description": "Animes VOSTFR et VF en streaming sur Anime-Ultime",
+      "version": "0.0.2",
+      "author": "Gowaru",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/anime-ultime.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "vidlink",
+      "name": "Vidlink",
+      "description": "Multi-embed movie & TV streaming resolver (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vidlink.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "videasy",
+      "name": "Videasy",
+      "description": "Video embed streaming aggregator (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/videasy.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "hianime",
+      "name": "HiAnime",
+      "description": "Top global anime streaming provider (EN)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
+      "filename": "providers/hianime.js",
+      "enabled": true,
+      "formats": [
+        "mp4",
+        "mkv"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "animepahe",
+      "name": "AnimePahe",
+      "description": "Fast anime streaming provider (EN)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
+      "filename": "providers/animepahe.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "streamflix",
+      "name": "StreamFlix",
+      "description": "Movies and TV series streaming (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/streamflix.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "allmovieland",
+      "name": "AllMovieLand",
+      "description": "AllMovieLand movies and TV streaming (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/allmovieland.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "animekai",
+      "name": "AnimeKai",
+      "description": "Anime streaming provider (EN)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
+      "filename": "providers/animekai.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "netmirror",
+      "name": "NetMirror",
+      "description": "NetMirror streaming provider (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/netmirror.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "reanime",
+      "name": "ReAnime",
+      "description": "ReAnime streaming provider (EN)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv",
+        "anime"
+      ],
+      "filename": "providers/reanime.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "vidnest",
+      "name": "VidNest",
+      "description": "VidNest video streaming aggregator (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vidnest.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "vidrock",
+      "name": "VidRock",
+      "description": "VidRock streaming provider (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vidrock.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "xprime",
+      "name": "XPrime",
+      "description": "XPrime streaming provider (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/xprime.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
+    },
+    {
+      "id": "myflixer-extractor",
+      "name": "MyFlixer Extractor",
+      "description": "MyFlixer streams extractor (Global)",
+      "version": "1.0.0",
+      "author": "Yoruix",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/myflixer-extractor.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "en"
+      ]
     },
     {
       "id": "diag",
-      "name": "🔧 DIAG v19",
-      "description": "Execute le VRAI fs20 sur le film ouvert et affiche le nb de streams + meilleure qualite. Toujours 1 ligne.",
+      "name": "\ud83d\udd27 DIAG v19",
+      "description": "Diagnostic tool for FS20",
       "version": "19.0.0",
-      "author": "",
-      "supportedTypes": ["movie", "tv"],
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
       "filename": "providers/diag.js",
       "enabled": true,
-      "formats": ["mp4"],
-      "contentLanguage": ["fr"]
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
+    },
+    {
+      "id": "diag-fstream",
+      "name": "\ud83d\udd0d DIAG v20 \u00b7 FStream",
+      "description": "Diagnostic tool for FStream",
+      "version": "20.0.0",
+      "author": "Fluffy",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/diag-fstream.js",
+      "enabled": true,
+      "formats": [
+        "mp4"
+      ],
+      "contentLanguage": [
+        "fr"
+      ]
     }
   ]
 }

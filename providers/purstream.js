@@ -1,5 +1,5 @@
-/* purstream - built 2026-08-26T11:58:06Z — GENERATED from src/, edit sources then `python3 build.py` */
-// ---- core\net.js ----
+/* purstream - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+// ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
 var CORE_UA =
@@ -95,7 +95,7 @@ function streamHeaders(referer) {
   return h;
 }
 
-// ---- core\text.js ----
+// ---- core/text.js ----
 // core/text.js — slugify, accents, Dean-Edwards unpacker, video-url finders (QuickJS safe)
 
 var ACCENT_MAP = {
@@ -253,7 +253,7 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
-// ---- core\tmdb.js ----
+// ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
 
@@ -374,7 +374,7 @@ function buildQueries(titles) {
   return out.slice(0, 10);
 }
 
-// ---- purstream\index.js ----
+// ---- purstream/index.js ----
 // PurStream — liens HLS DIRECTS (qualité HD, double audio FR/VO + sous-titres).
 // Listing via l'API publique Movix (api.movix.fun) : seule la LISTE des liens passe par
 // leur serveur (le flux vidéo part DIRECTEMENT de l'appareil vers le CDN finepulfe).
