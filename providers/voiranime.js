@@ -1,4 +1,4 @@
-/* voiranime - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* voiranime - built 2026-08-26T17:09:47Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -253,6 +253,28 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
+
+
+
+function qualityScore(stream) {
+  var q = String((stream && (stream.quality || stream.title || stream.name)) || '').toLowerCase();
+  if (q.includes('2160') || q.includes('4k') || q.includes('uhd') || q.includes('1080')) return 4;
+  if (q.includes('720')) return 3;
+  if (q.includes('hd') || q.includes('auto') || q.includes('m3u8') || q.includes('mp4')) return 2;
+  if (q.includes('480')) return 1;
+  if (q.includes('360') || q.includes('240')) return 0;
+  return 1;
+}
+
+function sortAndFilterStreams(streams) {
+  if (!Array.isArray(streams)) return [];
+  var sorted = streams.slice();
+  sorted.sort(function(a, b) {
+    return qualityScore(b) - qualityScore(a);
+  });
+  return sorted;
+}
+
 // ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
@@ -387,7 +409,7 @@ var HOST_RULES = [
   [/dood|ds2play|ds2video|d0o0d|dooodster|vidply/i, { name: "Dood", kind: "dood" }],
   [/voe\.|voemfr|voeunblk|v-o-e|sydney|jeffery|kenneth|callistan|metagnat|20demidistance|fraudsecond/i, { name: "Voe", kind: "voe" }],
   [/filemoon|moonmov/i, { name: "Filemoon", kind: "packer" }],
-  [/vidmoly|vidmolyme/i, { name: "Vidmoly", kind: "generic" }],
+  [/vidmoly|vidmolyme/i, { name: "Vidmoly", kind: "vidmoly" }],
   [/voembed|vmcld|myvidplay|vidcloud9/i, { name: "Voembed", kind: "generic" }],
   [/sharecloudy|ofbax|vromov|dotrab|ramcloud|cloudiest|nonwt/i, { name: "Sharecloudy", kind: "generic" }],
   [/sibnet/i, { name: "Sibnet", kind: "sibnet" }],
@@ -593,6 +615,19 @@ async function getvidResolve(embedUrl, referer) {
 
 // ---- main entry --------------------------------------------------------------
 // resolveEmbed(embedUrl, opts{ referer }) -> { url, referer, name } | null
+
+async function vidmolyResolve(embedUrl, referer) {
+  var pg = await fetchPage(embedUrl, referer, 12000);
+  if (!pg) return null;
+  var media = extractFromText(pg.html);
+  if (!media) {
+    var m = /sources:\s*\[\{\s*file:\s*["']([^"']+)["']/i.exec(pg.html);
+    if (m) media = m[1];
+  }
+  if (!media) return null;
+  return { url: media, referer: baseOf(pg.finalUrl) + '/', embedFrom: pg.finalUrl };
+}
+
 async function resolveEmbed(embedUrl, opts) {
   if (!embedUrl) return null;
   if (embedUrl.indexOf("//") === 0) embedUrl = "https:" + embedUrl;
@@ -606,7 +641,8 @@ async function resolveEmbed(embedUrl, opts) {
     else if (cls.kind === "packer") r = await packerResolve(embedUrl, referer);
     else if (cls.kind === "voe") r = await voeResolve(embedUrl, referer);
     else if (cls.kind === "getvid") r = await getvidResolve(embedUrl, referer);
-    else if (cls.kind === "sibnet") r = await sibnetResolve(embedUrl, referer);
+    else if (cls.kind === "vidmoly" ? r = await vidmolyResolve(embedUrl, referer) :
+    cls.kind === "sibnet") r = await sibnetResolve(embedUrl, referer);
     else r = await genericResolve(embedUrl, referer, 0);
     if (!r || !r.url) return null;
     if (!/\.(m3u8|mp4)(\?|#|$)/i.test(r.url)) return null; // sanity: real video file only
@@ -626,6 +662,7 @@ async function resolveEmbed(embedUrl, opts) {
 // (kimetsu-no-yaiba, kimetsu-no-yaiba-2, -3, -4...) each numbered from 1,
 // while the BASE page numbers absolutely. Rule: if season>=2 and a "-<season>"
 // slug exists -> mine it with the TMDB episode number; else -> base page, absolute ep.
+
 
 
 
@@ -691,7 +728,7 @@ function animeResults(html) {
     }
     if (!seen[s2]) { seen[s2] = true; out.push({ slug: s2, title: txt }); }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 
 // --- identity proof on an anime page -------------------------------------------
@@ -699,7 +736,7 @@ function animeResults(html) {
 function titleTokens(t) {
   var toks = stripAccents(String(t).toLowerCase()).replace(/[^a-z0-9 ]+/g, " ").split(/\s+/), out = [];
   for (var i = 0; i < toks.length; i++) if (toks[i].length >= 4 && !/^\d+$/.test(toks[i])) out.push(toks[i]);
-  return out;
+  return sortAndFilterStreams(out);
 }
 // normalize for phrase search: alnum collapsed to single spaces
 function normTxt(s) { return " " + stripAccents(String(s).toLowerCase()).replace(/[^a-z0-9]+/g, " ") + " "; }
@@ -739,7 +776,7 @@ function pickEpisode(html, slug, epNum) {
       if (m[3] === "vostfr" && !out.vostfr) out.vostfr = m[1];
     }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 function pickMovieLinks(html, slug) {
   var out = [], seen = {}, m;
@@ -748,7 +785,7 @@ function pickMovieLinks(html, slug) {
     var key = m[1] + m[3];
     if (!seen[key]) { seen[key] = true; out.push({ href: m[1], lang: m[3] }); }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 function playerIframes(html) {
   var out = [], seen = {}, m;
@@ -758,7 +795,7 @@ function playerIframes(html) {
     if (/googletagmanager|facebook|doubleclick|analytics|whos\.amung/i.test(u)) continue;
     if (!seen[u]) { seen[u] = true; out.push(u); }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 
 async function pageStreams(url, lang, title, streams) {
@@ -912,7 +949,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
           await pageStreams(links[L].href, links[L].lang.toUpperCase(), info.titles[0], streams);
         }
       }
-      return streams;
+      return sortAndFilterStreams(streams);
     }
 
     // tv — season-aware mining order:
@@ -960,7 +997,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       if (pick.vf && streams.length < 8) { minedEps++; await pageStreams(pick.vf, "VF", lb, streams); }
       if (streams.length) break;
     }
-    return streams;
+    return sortAndFilterStreams(streams);
   } catch (e) {
     log("THREW " + (e && e.message ? e.message : e));
     return [];

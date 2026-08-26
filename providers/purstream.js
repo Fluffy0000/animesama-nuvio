@@ -1,4 +1,4 @@
-/* purstream - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* purstream - built 2026-08-26T17:09:47Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -253,6 +253,28 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
+
+
+
+function qualityScore(stream) {
+  var q = String((stream && (stream.quality || stream.title || stream.name)) || '').toLowerCase();
+  if (q.includes('2160') || q.includes('4k') || q.includes('uhd') || q.includes('1080')) return 4;
+  if (q.includes('720')) return 3;
+  if (q.includes('hd') || q.includes('auto') || q.includes('m3u8') || q.includes('mp4')) return 2;
+  if (q.includes('480')) return 1;
+  if (q.includes('360') || q.includes('240')) return 0;
+  return 1;
+}
+
+function sortAndFilterStreams(streams) {
+  if (!Array.isArray(streams)) return [];
+  var sorted = streams.slice();
+  sorted.sort(function(a, b) {
+    return qualityScore(b) - qualityScore(a);
+  });
+  return sorted;
+}
+
 // ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
@@ -375,6 +397,7 @@ function buildQueries(titles) {
 }
 
 // ---- purstream/index.js ----
+import { sortAndFilterStreams } from ../core/text.js;
 // PurStream — liens HLS DIRECTS (qualité HD, double audio FR/VO + sous-titres).
 // Listing via l'API publique Movix (api.movix.fun) : seule la LISTE des liens passe par
 // leur serveur (le flux vidéo part DIRECTEMENT de l'appareil vers le CDN finepulfe).
@@ -428,7 +451,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       });
     }
     console.log(LOG + " => " + out.length + " streams");
-    return out;
+    return sortAndFilterStreams(out);
   } catch (e) {
     console.log(LOG + " Error: " + (e && e.message ? e.message : e));
     return [];

@@ -46,3 +46,8 @@
 ## 🛡️ Confidentialité & Performance
 - **Zéro proxy tiers** : chaque requête part directement de ton appareil vers les sources.
 - Indépendant du titre exact grâce aux résolveurs TMDB natifs.
+
+
+## 🔗 Lien direct du manifeste
+
+

@@ -1,4 +1,4 @@
-/* vostfree - built 2026-08-26T16:58:01Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* vostfree - built 2026-08-26T17:09:47Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core/net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -253,6 +253,28 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
+
+
+
+function qualityScore(stream) {
+  var q = String((stream && (stream.quality || stream.title || stream.name)) || '').toLowerCase();
+  if (q.includes('2160') || q.includes('4k') || q.includes('uhd') || q.includes('1080')) return 4;
+  if (q.includes('720')) return 3;
+  if (q.includes('hd') || q.includes('auto') || q.includes('m3u8') || q.includes('mp4')) return 2;
+  if (q.includes('480')) return 1;
+  if (q.includes('360') || q.includes('240')) return 0;
+  return 1;
+}
+
+function sortAndFilterStreams(streams) {
+  if (!Array.isArray(streams)) return [];
+  var sorted = streams.slice();
+  sorted.sort(function(a, b) {
+    return qualityScore(b) - qualityScore(a);
+  });
+  return sorted;
+}
+
 // ---- core/tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
@@ -387,7 +409,7 @@ var HOST_RULES = [
   [/dood|ds2play|ds2video|d0o0d|dooodster|vidply/i, { name: "Dood", kind: "dood" }],
   [/voe\.|voemfr|voeunblk|v-o-e|sydney|jeffery|kenneth|callistan|metagnat|20demidistance|fraudsecond/i, { name: "Voe", kind: "voe" }],
   [/filemoon|moonmov/i, { name: "Filemoon", kind: "packer" }],
-  [/vidmoly|vidmolyme/i, { name: "Vidmoly", kind: "generic" }],
+  [/vidmoly|vidmolyme/i, { name: "Vidmoly", kind: "vidmoly" }],
   [/voembed|vmcld|myvidplay|vidcloud9/i, { name: "Voembed", kind: "generic" }],
   [/sharecloudy|ofbax|vromov|dotrab|ramcloud|cloudiest|nonwt/i, { name: "Sharecloudy", kind: "generic" }],
   [/sibnet/i, { name: "Sibnet", kind: "sibnet" }],
@@ -593,6 +615,19 @@ async function getvidResolve(embedUrl, referer) {
 
 // ---- main entry --------------------------------------------------------------
 // resolveEmbed(embedUrl, opts{ referer }) -> { url, referer, name } | null
+
+async function vidmolyResolve(embedUrl, referer) {
+  var pg = await fetchPage(embedUrl, referer, 12000);
+  if (!pg) return null;
+  var media = extractFromText(pg.html);
+  if (!media) {
+    var m = /sources:\s*\[\{\s*file:\s*["']([^"']+)["']/i.exec(pg.html);
+    if (m) media = m[1];
+  }
+  if (!media) return null;
+  return { url: media, referer: baseOf(pg.finalUrl) + '/', embedFrom: pg.finalUrl };
+}
+
 async function resolveEmbed(embedUrl, opts) {
   if (!embedUrl) return null;
   if (embedUrl.indexOf("//") === 0) embedUrl = "https:" + embedUrl;
@@ -606,7 +641,8 @@ async function resolveEmbed(embedUrl, opts) {
     else if (cls.kind === "packer") r = await packerResolve(embedUrl, referer);
     else if (cls.kind === "voe") r = await voeResolve(embedUrl, referer);
     else if (cls.kind === "getvid") r = await getvidResolve(embedUrl, referer);
-    else if (cls.kind === "sibnet") r = await sibnetResolve(embedUrl, referer);
+    else if (cls.kind === "vidmoly" ? r = await vidmolyResolve(embedUrl, referer) :
+    cls.kind === "sibnet") r = await sibnetResolve(embedUrl, referer);
     else r = await genericResolve(embedUrl, referer, 0);
     if (!r || !r.url) return null;
     if (!/\.(m3u8|mp4)(\?|#|$)/i.test(r.url)) return null; // sanity: real video file only
@@ -624,6 +660,7 @@ async function resolveEmbed(embedUrl, opts) {
 //     buttons_<ep> holds <div id="player_<pid>" class="new_player_<host>">,
 //     and #content_player_<pid> holds an opaque id/url per host
 //     (sibnet video id, uqload embed id, gtv id, direct url...).
+
 
 
 
@@ -657,7 +694,7 @@ function searchPosts(html) {
     seen[url] = true;
     out.push({ url: url, slug: slug.toLowerCase() });
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 
 // title sanity for a post slug: share >= 2 long tokens with some candidate (or full slug contained)
@@ -698,7 +735,7 @@ function postEmbeds(html) {
     if (/\.(jpg|jpeg|png|css|js|ico)($|\?)/i.test(u)) continue;
     if (!seen[u]) { seen[u] = true; out.push(u); }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 
 // ---- embed extraction, shape B: typed player ids for one episode -----------------
@@ -720,7 +757,7 @@ function episodeEmbeds(html, absEp) {
       if (!seen[urls[q]]) { seen[urls[q]] = true; out.push(urls[q]); }
     }
   }
-  return out;
+  return sortAndFilterStreams(out);
 }
 
 // typed host -> embed url candidates
@@ -825,7 +862,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       log(post.slug + " embeds=" + embeds.length);
       await streamsFromEmbeds(embeds, post.url, label, lang, streams);
     }
-    return streams;
+    return sortAndFilterStreams(streams);
   } catch (e) {
     log("THREW " + (e && e.message ? e.message : e));
     return [];
