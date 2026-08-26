@@ -51,6 +51,7 @@ BUILDS = [
     ('vostfree',   'src/vostfree/index.js',   'providers/vostfree.js',   None),
     ('purstream',  'src/purstream/index.js',  'providers/purstream.js',  None),
     ('jour1film',  'src/jour1film/index.js',  'providers/jour1film.js',  None),
+    ('fstream',    'src/fstream/index.js',    'providers/fstream.js',    None),
 ]
 
 # vofamille variants: (key, name, origin, tag, default folder, output)

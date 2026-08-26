@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Nakastream" />
+    <meta name="theme-color" content="#0F0D0A" />
+    <meta name="admaven-placement" content="BqjsHqHn5" />
+    <!-- Google exige un favicon CARRE dont le cote est un multiple de 48 px, et
+         sonde /favicon.ico a la racine. logo.svg fait 478x504 : il ne remplit
+         aucune des deux conditions, d'ou la planete grise dans les resultats.
+         Les deux carres sont donc declares AVANT lui. -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Nakastream" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Pas de canonical statique ici : ce fichier est servi pour TOUTES les
+         routes du SPA, donc une valeur figée declarerait chaque page comme un
+         doublon de la home aupres des crawlers qui n'executent pas le JS.
+         C'est useCanonical() qui le pose, sur l'URL reellement affichee. -->
+
+    <!-- Les crawlers sociaux refusent les chemins relatifs : URL absolues obligatoires. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Nakastream" />
+    <meta property="og:title" content="Nakastream" />
+    <meta property="og:description" content="Films et séries en streaming, sans publicité, sur tous vos écrans." />
+    <meta property="og:url" content="https://nakastream.tv/" />
+    <meta property="og:image" content="https://nakastream.tv/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nakastream" />
+    <meta name="twitter:description" content="Films et séries en streaming, sans publicité, sur tous vos écrans." />
+    <meta name="twitter:image" content="https://nakastream.tv/og-default.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://nakastream.tv/#organization",
+            "name": "Nakastream",
+            "alternateName": ["Naka Stream", "NakaStream", "Naka-Stream"],
+            "url": "https://nakastream.tv/",
+            "logo": "https://nakastream.tv/pwa-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://nakastream.tv/#website",
+            "name": "Nakastream",
+            "alternateName": ["Naka Stream", "NakaStream"],
+            "url": "https://nakastream.tv/",
+            "inLanguage": "fr-FR",
+            "description": "Nakastream est un service de streaming privé de films et de séries.",
+            "publisher": { "@id": "https://nakastream.tv/#organization" }
+          }
+        ]
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </noscript>
+    <title>Nakastream</title>
+    <script type="module" crossorigin src="/assets/index-BChghWYH.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-Da9HT6Ms.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-player-CUuHSKBC.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-zustand-CiUjHUbp.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-ui-CycbyHRp.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DbG3e5M5.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" async></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"876e32f890a244f19cf97703952e932f"}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3122008ca7c76f8',t:'MTc4NzczOTg0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -382,9 +382,11 @@ function isCipherHost(url) {
 }
 // Quand le host n'a pas la vidéo il sert un VOD court (clip d'intro ~18s). Une vraie
 // master playlist a des variantes (EXT-X-STREAM-INF); une media playlist VOD courte = leurre.
-function playlistLooksReal(url) {
+function playlistLooksReal(url, referer) {
   return __async(this, null, function* () {
-    var r = yield safeFetch(url, { headers: { "User-Agent": USER_AGENT } }, 12e3);
+    var hdr = { "User-Agent": USER_AGENT };
+    if (referer) hdr["Referer"] = referer;
+    var r = yield safeFetch(url, { headers: hdr }, 12e3);
     if (!isOk(r)) return true;
     var t;
     try {
@@ -483,12 +485,12 @@ function resolveHost(hostKey, embedUrl, siteReferer) {
     var unpacked = unpackPacked(html);
     var media = null;
     // Famille fsvid/vidzy : le vrai lien est chiffré (cipher hostname-xor). Le .m3u8 en
-    // clair dans la page est systématiquement le leurre /troll/. Leur CDN répond 200 SANS
-    // Referer mais 403 avec certains Referer -> on stream sans Referer.
+    // clair dans la page est systématiquement le leurre /troll/. Referer = origine de la
+    // page embed (comme le vrai player): certains edges l'exigent (v6.vidzy.cc -> 403 sans).
     var cipherHost = isCipherHost(embedUrl);
     if (cipherHost) {
       media = decodeHostCipher(unpacked || html, hostOf(embedUrl)) || decodeHostCipher(html, hostOf(embedUrl));
-      if (media) referer = "";
+      if (media) referer = originOf(embedUrl) + "/";
     }
     if (!media) media = findVideoUrl(unpacked) || findVideoUrl(html);
     if (!media) {
@@ -508,7 +510,7 @@ function resolveHost(hostKey, embedUrl, siteReferer) {
     if (!media) return null;
     if (/\/troll\//i.test(media)) return null;
     if (cipherHost && /\.m3u8/i.test(media)) {
-      var looksReal = yield playlistLooksReal(media);
+      var looksReal = yield playlistLooksReal(media, referer);
       if (!looksReal) return null;
     }
     var kind = /\.m3u8/i.test(media) ? "hls" : "mp4";

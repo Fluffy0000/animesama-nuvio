@@ -391,9 +391,11 @@ function isCipherHost(url) {
 }
 // Quand le host n'a pas la vidéo il sert un VOD court (clip d'intro ~18s). Une vraie
 // master playlist a des variantes (EXT-X-STREAM-INF); une media playlist VOD courte = leurre.
-function playlistLooksReal(url) {
+function playlistLooksReal(url, referer) {
   return __async(this, null, function* () {
-    var r = yield safeFetch(url, { headers: { "User-Agent": USER_AGENT } }, 12e3);
+    var hdr = { "User-Agent": USER_AGENT };
+    if (referer) hdr["Referer"] = referer;
+    var r = yield safeFetch(url, { headers: hdr }, 12e3);
     if (!isOk(r)) return true;
     var t;
     try {
@@ -440,14 +442,15 @@ function resolveHost(hostKey, embedUrl) {
     var video = null;
     if (cipherHost) {
       video = decodeHostCipher(searchIn, hostOf(r.url || embedUrl)) || decodeHostCipher(html, hostOf(r.url || embedUrl));
-      if (video) referer = "";
+      // Referer = origine de la page embed: exigé par certains edges du CDN (v6... 403 sans)
+      if (video) referer = originOf(r.url || embedUrl) + "/";
     }
     if (!video) video = findVideoUrl(searchIn);
     if (!video) video = findVideoUrl(html);
     if (!video) return null;
     if (/\/troll\//i.test(video)) return null;
     if (cipherHost && /\.m3u8/i.test(video)) {
-      var looksReal = yield playlistLooksReal(video);
+      var looksReal = yield playlistLooksReal(video, referer);
       if (!looksReal) return null;
     }
     var externalSubs = [];

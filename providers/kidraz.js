@@ -1,5 +1,5 @@
-/* vofamille/kidraz - built 2026-08-26T11:14:42Z — GENERATED from src/, edit sources then `python3 build.py` */
-// ---- core/net.js ----
+/* vofamille/kidraz - built 2026-08-26T11:58:06Z — GENERATED from src/, edit sources then `python3 build.py` */
+// ---- core\net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
 var CORE_UA =
@@ -95,7 +95,7 @@ function streamHeaders(referer) {
   return h;
 }
 
-// ---- core/text.js ----
+// ---- core\text.js ----
 // core/text.js — slugify, accents, Dean-Edwards unpacker, video-url finders (QuickJS safe)
 
 var ACCENT_MAP = {
@@ -253,7 +253,7 @@ function isTrollUrl(url) {
   return /\/troll\//i.test(url || "");
 }
 
-// ---- core/tmdb.js ----
+// ---- core\tmdb.js ----
 // core/tmdb.js — TMDB titles/year + season anatomy (needs fetchJson from net.js)
 
 
@@ -374,7 +374,7 @@ function buildQueries(titles) {
   return out.slice(0, 10);
 }
 
-// ---- core/hosts.js ----
+// ---- core\hosts.js ----
 // core/hosts.js — resolve an embed/player URL to a direct video { url, referer, name } | null
 // All requests go DIRECT from the device. No proxy, no third-party relay, ever.
 
@@ -385,7 +385,7 @@ function buildQueries(titles) {
 var HOST_RULES = [
   [/uqload|up4fun|up4load|upload42|uppom/i, { name: "Uqload",  kind: "packer" }],
   [/dood|ds2play|ds2video|d0o0d|dooodster|vidply/i, { name: "Dood", kind: "dood" }],
-  [/voe\.|voemfr|voeunblk|v-o-e|jeffery|kenneth|callistan|metagnat|20demidistance|fraudsecond/i, { name: "Voe", kind: "voe" }],
+  [/voe\.|voemfr|voeunblk|v-o-e|sydney|jeffery|kenneth|callistan|metagnat|20demidistance|fraudsecond/i, { name: "Voe", kind: "voe" }],
   [/filemoon|moonmov/i, { name: "Filemoon", kind: "packer" }],
   [/vidmoly|vidmolyme/i, { name: "Vidmoly", kind: "generic" }],
   [/voembed|vmcld|myvidplay|vidcloud9/i, { name: "Voembed", kind: "generic" }],
@@ -394,6 +394,7 @@ var HOST_RULES = [
   [/sendvid/i, { name: "Sendvid", kind: "generic" }],
   [/luluvdo|lulu/i, { name: "Luluvdo", kind: "generic" }],
   [/vidzy/i, { name: "Vidzy", kind: "packer" }],
+  [/fsvid/i, { name: "Fsvid", kind: "packer" }],
   [/getvid\.club/i, { name: "Getvid", kind: "getvid" }],
   [/streamtape/i, { name: "Streamtape", kind: "generic" }],
   [/mixdrop/i, { name: "Mixdrop", kind: "packer" }],
@@ -462,8 +463,10 @@ async function genericResolve(embedUrl, referer, depth) {
 
 // fsvid/vidzy : quand le host n'a pas la vidéo il sert un VOD court (intro ~18s). Une vraie
 // master playlist a des variantes (EXT-X-STREAM-INF); une media playlist VOD courte = leurre.
-async function playlistLooksReal(url) {
-  var t = await fetchText(url, { headers: { "User-Agent": CORE_UA } }, 12000);
+async function playlistLooksReal(url, referer) {
+  var h = { "User-Agent": CORE_UA };
+  if (referer) h["Referer"] = referer;
+  var t = await fetchText(url, { headers: h }, 12000);
   if (!t || t.indexOf("#EXTM3U") < 0) return true;      // réseau capricieux -> on ne tue pas le stream
   if (t.indexOf("#EXT-X-STREAM-INF") >= 0) return true;
   if (t.indexOf("#EXT-X-ENDLIST") < 0) return true;
@@ -486,9 +489,12 @@ async function packerResolve(embedUrl, referer) {
     media = decodeHostCipher(unpacked.join("\n"), chkHost) || decodeHostCipher(pg.html, chkHost);
     if (media) {
       if (isTrollUrl(media)) return null;
-      if (/\.m3u8/i.test(media) && !(await playlistLooksReal(media))) return null;
-      // leur CDN répond 200 SANS Referer mais 403 avec certains Referer -> pas de Referer
-      return { url: media, referer: "", embedFrom: pg.finalUrl };
+      // Referer = origine de la page embed (ce qu'envoie le vrai player):
+      // certains edges l'exigent (v6.vidzy.cc -> 403 sans), les autres l'acceptent (u14 -> 200).
+      var cref = baseOf(pg.finalUrl) || baseOf(embedUrl) || "";
+      if (cref) cref += "/";
+      if (/\.m3u8/i.test(media) && !(await playlistLooksReal(media, cref))) return null;
+      return { url: media, referer: cref, embedFrom: pg.finalUrl };
     }
   }
   for (var i = 0; i < unpacked.length; i++) {
@@ -610,7 +616,7 @@ async function resolveEmbed(embedUrl, opts) {
   }
 }
 
-// ---- vofamille/index.js ----
+// ---- vofamille\index.js ----
 // vofamille — generic provider for the yablom-skeleton family:
 //   yablom.com, kordoz.com, ilmiv.com, kidraz.com (films only, VF/VOSTFR, sharecloudy)
 // Pipeline: resolve folder token -> /{f}/api_search.php?searchword= (Referer REQUIRED)
