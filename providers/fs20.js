@@ -49,6 +49,7 @@ var USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (
 var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
 var FALLBACK_HOSTS = [
   "https://fs20.lol",
+  "https://fs16.lol",
   "https://french-stream.one",
   "https://french-stream.club"
 ];
@@ -783,6 +784,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     for (var ji = 0; ji < jobs.length && ji < MAX_JOBS; ji++) {
       var jb = jobs[ji];
       var g = yield buildStreams(jb.hostKey, jb.embedUrl, jb.langKey, jb.epNum, jb.langText, base + "/");
+      if (!g || !g.length) continue;
       for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
       if (streams.length) break;
     }

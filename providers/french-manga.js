@@ -756,7 +756,7 @@ function runBatched(items, worker, size) {
 function buildStreamsForHost(job) {
   return __async(this, null, function* () {
     var resolved = yield resolveHost(job.hostKey, job.embedUrl);
-    if (!resolved) return null;
+    if (!resolved) return [];
     var display = hostDisplayName(job.hostKey, job.embedUrl);
     var langLabel = job.lang === "vf" ? "VF" : "VOSTFR";
     var flag = job.lang === "vf" ? "\u{1F1EB}\u{1F1F7}" : "\u{1F1EF}\u{1F1F5}";
@@ -855,6 +855,7 @@ function getStreamsImpl(tmdbId, mediaType, season, episode) {
     var streams = [];
     for (var ji = 0; ji < jobs.length; ji++) {
       var g = yield buildStreamsForHost(jobs[ji]);
+      if (!g || !g.length) continue;
       for (var gx = 0; gx < g.length; gx++) streams.push(g[gx]);
       if (streams.length) break;
     }

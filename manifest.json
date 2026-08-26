@@ -1,6 +1,6 @@
 {
   "name": "Nuvio Repo — Gabriel",
-  "version": "1.32.0",
+  "version": "1.33.0",
   "scrapers": [
     {
       "id": "animesama-fr",
@@ -18,7 +18,7 @@
       "id": "french-manga",
       "name": "🍥 French-Manga",
       "description": "Animes & films d'animation VF/VOSTFR depuis french-manga.net (Vidzy, Luluvdo) — cipher anti-leurre : vrai contenu garanti",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "author": "",
       "supportedTypes": ["movie", "tv", "anime"],
       "filename": "providers/french-manga.js",
@@ -89,8 +89,8 @@
     {
       "id": "fs20",
       "name": "🎥 French Stream",
-      "description": "Films & séries live-action VF/VOSTFR depuis fs20.lol (Premium 1080p, Vidzy, Uqload) — cipher anti-leurre : vrai contenu garanti",
-      "version": "1.3.1",
+      "description": "Films & séries live-action VF/VOSTFR — fs20.lol avec bascule auto sur miroirs fs16.lol / french-stream.one si bloqué (Premium, Vidzy, Uqload) — cipher anti-leurre : vrai contenu garanti",
+      "version": "1.3.3",
       "author": "",
       "supportedTypes": ["movie", "tv"],
       "filename": "providers/fs20.js",
@@ -102,12 +102,24 @@
       "id": "fstream",
       "name": "📡 FStream·One",
       "description": "Films & séries VF/VFQ/VFF/VOSTFR depuis french-stream.one (API Movix publique) — lecteurs pré-triés par langue, cipher fsvid/vidzy décodé localement : vrai contenu garanti",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "",
       "supportedTypes": ["movie", "tv"],
       "filename": "providers/fstream.js",
       "enabled": true,
       "formats": ["mp4", "mkv"],
+      "contentLanguage": ["fr"]
+    },
+    {
+      "id": "diag-fstream",
+      "name": "🔍 DIAG v20 · FStream",
+      "description": "Execute FStream·One pas-a-pas et affiche en 1 ligne ou ca bloque : API movix, groupes de langue, 1er embed, cipher. Aucune resolution complete.",
+      "version": "20.0.0",
+      "author": "",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/diag-fstream.js",
+      "enabled": true,
+      "formats": ["mp4"],
       "contentLanguage": ["fr"]
     },
     {

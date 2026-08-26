@@ -1,4 +1,4 @@
-/* fstream - built 2026-08-26T11:58:06Z — GENERATED from src/, edit sources then `python3 build.py` */
+/* fstream - built 2026-08-26T12:26:21Z — GENERATED from src/, edit sources then `python3 build.py` */
 // ---- core\net.js ----
 // core/net.js — safe fetch helpers (QuickJS / Hermes safe, no Node APIs, no timers dependency)
 
@@ -739,7 +739,11 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     title = title || ("TMDB " + tmdbId);
     var epLabel = isMovie ? "" : " · S" + season + "E" + episode;
 
+    // Deadline globale : mieux vaut renvoyer vite 2-3 liens sûrs que 8 liens dans 60 s
+    // (Nuvio peut abandonner un getStreams long -> l'utilisateur voit "0 résultat").
+    var t0 = Date.now(), DEADLINE_MS = 20000;
     var results = await mapLimit(entries.slice(0, MAX_RESOLVE), 3, async function (e) {
+      if (Date.now() - t0 > DEADLINE_MS) return null;
       try { return await resolveEntry(e, title, epLabel); } catch (err) { return null; }
     });
 

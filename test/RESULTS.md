@@ -29,7 +29,10 @@ FSTREAM.TOP et plus rien** (prouvé par extraction de frames + somme des durées
 2. Leurre `/troll/` filtré explicitement.
 3. `playlistLooksReal()` : si la playlist est un VOD court (< 4 min) → rejeté → fallback sur
    l'hébergeur suivant (vidzy/uqload).
-4. Le CDN fsvid/vidzy 403 sur certains Referer → streams émis **sans Referer** (200 vérifié).
+4. Règle **Referer vidzy/fsvid tranchée** : la page embed exige son **origine finale** comme
+   Referer (`v6.vidzy.cc` → **403 sans**, 200 avec ; `u14`/fsvid l'acceptent aussi) — les
+   streams sont émis AVEC `Referer: <origine de l'embed>/` (core partagé corrigé et propagé
+   aux providers buildés au rebuild ; **fs20 1.3.1 / french-manga 1.1.1** édités à la main).
 
 ## ✅ Matrice complète — contenu prouvé par durée
 
@@ -49,6 +52,48 @@ FSTREAM.TOP et plus rien** (prouvé par extraction de frames + somme des durées
 | | | | | ✓ |
 
 Aucun faux positif connu : vostfree renvoie EMPTY sur les non-anime / absents du catalogue.
+
+## 📡 FStream·One (nouveau provider, v1.0.0) — audit d'entrée 2026-08-26
+
+Source : **API Movix publique** (`api.movix.fun/api/fstream`, GET anonyme) qui liste les
+lecteurs de french-stream.one déjà groupés par langue ; chaque embed est ensuite résolu
+DIRECTEMENT depuis l'appareil (moteur commun : cipher fsvid/vidzy, packers uqload/filemoon,
+dood, voe…). Wiflix sondé en amont = doublon exact de cinestream → écarté.
+
+### 🚨 Bug trouvé & corrigé à l'entrée : le groupe « Default » ignoré
+
+L'API organise les lecteurs films en `{VFQ, VFF, VOSTFR, Default}` et séries en
+`{VF, VOSTFR, VOENG, Default}`. `Default` = onglet par défaut de la page
+(slug `streaming-complet-vf`) — donc **VF** sur ce site FR. Le parseur initial ne lisait que
+`vfq/vff/vostfr` codés en dur : tout film dont les lecteurs vivent sous `Default`
+(ex. *Le Fabuleux Destin d'Amélie Poulain*) renvoyait **EMPTY** malgré 6 lecteurs disponibles.
+
+**Correctif (src/fstream/index.js, rebuild 1.32.0)** : règle généralisée — groupe contenant
+« vost » → `VOSTFR`, **tout le reste → VF** ; tri VF d'abord / VOSTFR en dernier. Même logique
+côté séries. Au passage la règle `fsvid` a rejoint `HOST_RULES` (sinon Premium fsvid tombait
+en generic → leurre troll).
+
+### ✅ Matrice FStream·One — contenu prouvé par durée
+
+| Test | Streams | Détail | Durée mesurée | Verdict |
+|---|---|---|---|---|
+| Amélie Poulain (194) — **titre accenté, players sous `Default`** | 1/1 | Vidzy VF HLS (le cas vide avant fix) | **122min02** (= durée exacte du film) | ✓ |
+| Breaking Bad S1E1 (1396) tv | 4/4 | Vidzy+Uqload VF puis Uqload+Vidzy VOSTFR | **58min06** ×4 | ✓ |
+| Oppenheimer (872585) movie | 3/3 | Vidzy ×2 + Uqload, tous VF (**v6.vidzy.cc : Referer exigé, OK**) | **180min22** ×3 | ✓ |
+
+## 🛑 stigstream.ru — conclusion d'enquête (inobservable depuis cet environnement)
+
+Deux constats indépendants, recoupés via relais de recon (analyse uniquement, rien dans les providers) :
+
+1. **Origin DOWN, pas un blocage local** : `api.stigstream.ru` répond **522** (Cloudflare
+   « origin unreachable ») derrière les relais comme en direct — le backend est mort/injoignable,
+   quel que soit notre IP.
+2. **IP datacenter bannie côté edge** : requête directe → **403 court** (ban ASN), sans page ni
+   challenge exploitable.
+
+→ Combinaison fatale : l'edge nous refuse par ASN **et** l'origin ne répond plus aux rares
+passages. Rien n'est observable d'ici, donc rien à coder — à réévaluer seulement si l'origin
+revient ET sur IP résidentielle (appareil réel). Classé **non retenu** avec ce motif.
 
 ## 📦 Historique (session précédente)
 
